@@ -1,0 +1,102 @@
+---
+title: "TP Integrador - Aprendizaje Estadístico"
+author: "Santiago Bertero - Lautaro De Lucia"
+date: "2023-01-17"
+output: html_document
+---
+
+![](satellite.png)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(ggcorrplot)
+library(glue)
+library(rmarkdown)
+library(caret)
+library(kableExtra)
+library(jtools)
+library(scatterPlotMatrix)
+suppressMessages(library(tidyverse))
+
+utils.DataFrame.print <- function (df,head){
+knitr::kable(head(df,head), format = "html", table.attr = "style='width:50%;'") %>% 
+  kableExtra::kable_styling() 
+}
+```
+
+## **<font color=darkblue> Enunciado </font>**
+
+En el archivo ***sat.txt*** se tienen datos de valores de espectros de pixels en una imagen de satélite utilizados para la ***predicción de la clase de suelo***. Realice un análisis de los datos utilizando diferentes métodos y compárelos mediante Validación Cruzada. Luego aplíquelos a la muestra de test ***sat.tst*** y analice los resultados obtenidos.
+
+## **<font color=darkblue> Descripción de los Datos</font>**
+
+<br>
+
+- #### **Propósito**
+
+La base de datos contiene los valores multi-espectrales de píxeles en regiones de 3x3 en una imágen satelital, y la clasificación asociada con el píxel central de cada región. El objetivo es predecir esta clasificación dados los valores multi-espectrales. 
+
+- #### **Detalle**
+
+Esta base de datos se generó a partir del ***escáner multi-espectral LANDSAT***. Un marco de imágenes Landsat MSS consta de ***cuatro imágenes*** digitales de la misma escena en ***diferentes bandas espectrales***. Dos de estos están en la región visible (correspondiente aproximadamente a las regiones verdes y rojas del espectro visible) y dos están en el infrarrojo. Cada ***píxel*** es una palabra binaria de 8 bits, con ***0*** correspondiente al negro y ***255*** a blanco. La resolución espacial de un píxel es de unos 80 m x 80m. Cada imagen contiene 2340 x 3380 de tales píxeles. 
+
+La base de datos es una subárea (pequeña) de una escena, que consta de 82 x 100 píxeles. ***Cada línea de datos corresponde a una región de píxeles cuadrados 3x3*** completamente contenida dentro de la subárea 82x100. Cada línea contiene los valores de píxeles en las cuatro bandas espectrales (convertidas en ASCII) de cada uno de los 9 píxeles en la región 3x3 y un número que indica la etiqueta de clasificación del píxel central.
+
+La ***clase*** de cada píxel se codifica como un número, siendo estos:
+
+- ***1:*** suelo rojo
+- ***2:*** cultivo de algodón
+- ***3:*** suelo gris
+- ***4:*** suelo gris húmdeo
+- ***5:*** suelo con rastrojo de vegetación 
+- ***6:*** mezcla de suelos
+- ***7:*** suelo gris muy húmedo  
+
+   -   **<font color='red'>N.B</font>**:
+No hay ejemplos con la clase 6 en este conjunto de datos (fueron removidos debido a dudas respecto a la validez de esta clase). Los datos se dan en orden aleatorio y se han eliminado ciertas líneas de datos para que no pueda reconstruir la imagen original a partir de este conjunto de datos.
+
+En cada línea de datos, ***los cuatro valores espectrales para el píxel superior izquierdo se dan primero***, seguidos por los cuatro valores espectrales para el píxel medio superior y luego los del píxel superior derecho, y así sucesivamente de modo que ***los píxeles se leen en secuencia de izquierda a derecha y de arriba a abajo***. Por lo tanto, los cuatro valores espectrales para los píxeles centrales están dados por los atributos 17,18,19 y 20. ***Si lo desea, puede usar solo estos cuatro atributos***, ignorando los demás.
+
+- ***DATOS TOTALES*** &rarr; set de entrenamiento: 4435 set de prueba: 2000
+- ***CANTIDAD DE ATRIBUTOS*** &rarr; 36 (4 bandas espectrales x 9 píxeles en una región)
+- ***ATRIBUTOS*** &rarr; numéricos en el rango {0,255}
+- ***CLASES*** &rarr; 6 en total: {1,2,3,4,5,7}
+
+
+## **<font color=darkblue> Resolución </font>**
+
+### **<font color=darkblue> Obtención del Set de Datos </font>**
+
+Dado que el enunciado menciona que pueden utilizarse solo los datos espectrales
+correspondientes al píxel central, buscamos extraerlos, junto con su clasificación,
+a una sola dataframe.
+
+
+
+![](Explicacion_TP2_español.drawio.png)
+
+
+
+```{r}
+file = "SAT_trn.txt"
+data <- read.table(file, sep = "", header=F)
+sat_df <- data      %>% 
+  select(17:20,37)  %>% 
+  rename(B1=V17,
+         B2=V18,
+         B3=V19,
+         B4=V20,
+         C=V37)
+utils.DataFrame.print(sat_df,10)
+```
+
+
+```{r}
+scatterPlotMatrix(sat_df,zAxisDim='C')
+```
+
+
+
+
