@@ -101,6 +101,10 @@ scatterPlotMatrix(sat_df,zAxisDim='C')
 
 ### **<font color=darkblue> Regresión Logística </font>**
 
+### **<font color=darkblue> Regresión Logística </font>**
+
+### **<font color=darkblue> Regresión Logística </font>**
+
 
 ```{r}
 ```
