@@ -97,6 +97,11 @@ utils.DataFrame.print(sat_df,10)
 scatterPlotMatrix(sat_df,zAxisDim='C')
 ```
 
+### **<font color=darkblue> Vecinos Más Cercanos </font>**
+
+### **<font color=darkblue> Regresión Logística </font>**
 
 
+```{r}
+```
 
