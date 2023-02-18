@@ -10,6 +10,10 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
+library(glm2)
+library(GGally)
+library(gridExtra)
+library(viridis)
 library(ggplot2)
 library(ggcorrplot)
 library(glue)
@@ -23,6 +27,11 @@ suppressMessages(library(tidyverse))
 utils.DataFrame.print <- function (df,head){
 knitr::kable(head(df,head), format = "html", table.attr = "style='width:50%;'") %>% 
   kableExtra::kable_styling() 
+}
+
+utils.color_theme <- function(){
+  list(scale_fill_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')), 
+theme(panel.background = element_rect(fill = "paleturquoise", color = "black"),panel.grid.major = element_line(color = "paleturquoise3"),panel.grid.minor = element_line(color = "paleturquoise3")))
 }
 ```
 
@@ -80,32 +89,135 @@ a una sola dataframe.
 
 
 ```{r}
-file = "SAT_trn.txt"
-data <- read.table(file, sep = "", header=F)
-sat_df <- data      %>% 
+file_trn = "SAT_trn.txt"
+data_trn <- read.table(file_trn, sep = "", header=F)
+sat_trn_df <- data_trn      %>% 
   select(17:20,37)  %>% 
   rename(B1=V17,
          B2=V18,
          B3=V19,
          B4=V20,
          C=V37)
-utils.DataFrame.print(sat_df,10)
+file_tst = "SAT_tst.txt"
+data_tst <- read.table(file_tst, sep = "", header=F)
+sat_tst_df <- data_tst      %>% 
+  select(17:20,37)  %>% 
+  rename(B1=V17,
+         B2=V18,
+         B3=V19,
+         B4=V20,
+         C=V37)
+```
+
+```{r}
+sat_trn_df$C[sat_trn_df$C == 7] <- 6
+sat_tst_df$C[sat_tst_df$C == 7] <- 6
+class_names <- c("rojo", "algodón", "gris","gris húmedo", "vegetación", "gris muy húmedo")
+class_values <- c(1,2,3,4,5,6)
+class_map <- setNames(class_names, class_values)
+sat_trn_df$C <- class_map[sat_trn_df$C]
+sat_tst_df$C <- class_map[sat_tst_df$C]
 ```
 
 
-```{r}
-scatterPlotMatrix(sat_df,zAxisDim='C')
+### **<font color=darkblue> Visualización de los Datos</font>**
+
+#### Contenido del Set de Datos
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+utils.DataFrame.print(sat_trn_df,10)
+```
+
+Podemos comprobar que tenemos valores acotados entre 0 y 255 para cuatro bandas espectrales y una categoría de suelo asignada en cada fila. Los contenidos pueden visualizarse mejor utilizando un gráfico de coordenadas paralelas.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
+gpc_trn <- ggparcoord(sat_trn_df, columns = 1:4, groupColumn = "C", scale='globalminmax',title="Datos de Entrenamiento") + 
+scale_colour_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')) + 
+utils.color_theme()
+gpc_tst <- ggparcoord(sat_tst_df, columns = 1:4, groupColumn = "C",scale='globalminmax',title="Datos de Prueba") +  scale_colour_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')) +
+utils.color_theme()
+grid.arrange(gpc_trn, gpc_tst, nrow = 2)
+```
+
+Donde cada linea representa una observación para las 4 bandas. La normalización de los valores no es necesaria ya que $B_1:B_4$ estan en la misma escala. Podemos ver que la distribución de suelo en los datos de entrenamiento y prueba es practicamente la misma.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
+ggpairs(sat_trn_df, aes(color = C)) + scale_fill_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')) + scale_colour_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')) + 
+utils.color_theme()
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
+dns_B1 <- ggplot(sat_trn_df, aes(x = B1, fill = C)) +
+  geom_density(alpha = 1) +
+  facet_grid(C ~ .) +  
+  guides(fill = FALSE) + utils.color_theme()
+dns_B2 <- ggplot(sat_trn_df, aes(x = B2, fill = C)) +
+  geom_density(alpha = 1) +
+  facet_grid(C ~ .) +  
+  guides(fill = FALSE) + utils.color_theme()
+dns_B3 <- ggplot(sat_trn_df, aes(x = B3, fill = C)) +
+  geom_density(alpha = 1) +
+  facet_grid(C ~ .) +
+  guides(fill = FALSE) + utils.color_theme()
+dns_B4 <- ggplot(sat_trn_df, aes(x = B4, fill = C)) +
+  geom_density(alpha = 1) +
+  facet_grid(C ~ .) +
+  guides(fill = FALSE) + utils.color_theme()
+grid.arrange(dns_B1,dns_B2,dns_B3,dns_B4, ncol = 4)
+
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
+vio_B1 <- ggplot(sat_trn_df, aes(x = C, y = B1, fill = C)) +
+  geom_violin() +
+  guides(fill = FALSE) +
+  utils.color_theme()
+vio_B2 <- ggplot(sat_trn_df, aes(x = C, y = B2, fill = C)) +
+  geom_violin() +
+  guides(fill = FALSE) +
+  utils.color_theme()
+vio_B3 <- ggplot(sat_trn_df, aes(x = C, y = B3, fill = C)) +
+  geom_violin() +
+  guides(fill = FALSE) + 
+  utils.color_theme()
+vio_B4 <- ggplot(sat_trn_df, aes(x = C, y = B4, fill = C)) +
+  geom_violin() +
+  guides(fill = FALSE) + 
+  utils.color_theme()
+grid.arrange(vio_B1,vio_B2,vio_B3,vio_B4, nrow =2, ncol = 2)
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
+library(ggplot2)
+
+ggplot(sat_trn_df, aes(x = B1, fill = C)) + 
+  geom_bar(position = "stack") +
+  labs(x = "B1", y = "Count", fill = "Category") + 
+  utils.color_theme()
 ```
 
 ### **<font color=darkblue> Vecinos Más Cercanos </font>**
 
 ### **<font color=darkblue> Regresión Logística </font>**
 
-### **<font color=darkblue> Regresión Logística </font>**
-
-### **<font color=darkblue> Regresión Logística </font>**
-
 
 ```{r}
+# Convert the response variable to a factor
+sat_trn_df$C <- factor(sat_trn_df$C)
+sat_tst_df$C <- factor(sat_tst_df$C)
+
+# Fit Multinomial Logistic Regression model using `nnet`
+model_nnet <- nnet::multinom(C ~ ., data = sat_trn_df)
+
+# Make predictions on the testing data
+pred_nnet <- predict(model_nnet, newdata = sat_tst_df, type = "class")
+
+# Evaluate the accuracy of the predictions
+accuracy_nnet <- mean(pred_nnet == sat_tst_df$C)
 ```
+
+```{r}
+accuracy_nnet
+```
+
 
