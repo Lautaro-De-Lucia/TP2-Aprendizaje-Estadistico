@@ -201,23 +201,5 @@ ggplot(sat_trn_df, aes(x = B1, fill = C)) +
 ### **<font color=darkblue> Regresión Logística </font>**
 
 
-```{r}
-# Convert the response variable to a factor
-sat_trn_df$C <- factor(sat_trn_df$C)
-sat_tst_df$C <- factor(sat_tst_df$C)
-
-# Fit Multinomial Logistic Regression model using `nnet`
-model_nnet <- nnet::multinom(C ~ ., data = sat_trn_df)
-
-# Make predictions on the testing data
-pred_nnet <- predict(model_nnet, newdata = sat_tst_df, type = "class")
-
-# Evaluate the accuracy of the predictions
-accuracy_nnet <- mean(pred_nnet == sat_tst_df$C)
-```
-
-```{r}
-accuracy_nnet
-```
 
 

@@ -924,31 +924,6 @@ es practicamente la misma.</p>
 <div id="regresión-logística" class="section level3">
 <h3><strong><font color="darkblue"> Regresión Logística
 </font></strong></h3>
-<pre class="r"><code># Convert the response variable to a factor
-sat_trn_df$C &lt;- factor(sat_trn_df$C)
-sat_tst_df$C &lt;- factor(sat_tst_df$C)
-
-# Fit Multinomial Logistic Regression model using `nnet`
-model_nnet &lt;- nnet::multinom(C ~ ., data = sat_trn_df)</code></pre>
-<pre><code>## # weights:  36 (25 variable)
-## initial  value 7946.453246 
-## iter  10 value 5058.897621
-## iter  20 value 4465.567192
-## iter  30 value 2040.638134
-## iter  40 value 1964.518407
-## iter  50 value 1891.616486
-## iter  60 value 1880.556499
-## iter  70 value 1879.566720
-## iter  80 value 1877.549898
-## final  value 1877.549564 
-## converged</code></pre>
-<pre class="r"><code># Make predictions on the testing data
-pred_nnet &lt;- predict(model_nnet, newdata = sat_tst_df, type = &quot;class&quot;)
-
-# Evaluate the accuracy of the predictions
-accuracy_nnet &lt;- mean(pred_nnet == sat_tst_df$C)</code></pre>
-<pre class="r"><code>accuracy_nnet</code></pre>
-<pre><code>## [1] 0.8255</code></pre>
 </div>
 </div>
 
