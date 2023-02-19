@@ -12,7 +12,10 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(glm2)
 library(GGally)
+library(rpart)  
+library(rpart.plot) 
 library(gridExtra)
+library(class)
 library(viridis)
 library(ggplot2)
 library(ggcorrplot)
@@ -20,6 +23,7 @@ library(glue)
 library(rmarkdown)
 library(caret)
 library(kableExtra)
+library(pROC)
 library(jtools)
 library(scatterPlotMatrix)
 suppressMessages(library(tidyverse))
@@ -33,6 +37,52 @@ utils.color_theme <- function(){
   list(scale_fill_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')), 
 theme(panel.background = element_rect(fill = "paleturquoise", color = "black"),panel.grid.major = element_line(color = "paleturquoise3"),panel.grid.minor = element_line(color = "paleturquoise3")))
 }
+
+
+conf_matrix <- function(df.true, df.pred, title = "", true.lab ="True Class", pred.lab ="Predicted Class",
+                        high.col = 'green', low.col = 'white') {
+  #convert input vector to factors, and ensure they have the same levels
+  df.true <- as.factor(df.true)
+  df.pred <- factor(df.pred, levels = levels(df.true))
+  
+  #generate confusion matrix, and confusion matrix as a pecentage of each true class (to be used for color) 
+  df.cm <- table(True = df.true, Pred = df.pred)
+  df.cm.col <- df.cm / rowSums(df.cm)
+  
+  #convert confusion matrices to tables, and binding them together
+  df.table <- reshape2::melt(df.cm)
+  df.table.col <- reshape2::melt(df.cm.col)
+  df.table <- left_join(df.table, df.table.col, by =c("True", "Pred"))
+  
+  #calculate accuracy and class accuracy
+  acc.vector <- c(diag(df.cm)) / c(rowSums(df.cm))
+  class.acc <- data.frame(Pred = "Class Acc.", True = names(acc.vector), value = acc.vector)
+  acc <- sum(diag(df.cm)) / sum(df.cm)
+  
+  #plot
+  ggplot() +
+    geom_tile(aes(x=Pred, y=True, fill=value.y),
+              data=df.table, size=0.2, color=grey(0.5)) +
+    geom_tile(aes(x=Pred, y=True),
+              data=df.table[df.table$True==df.table$Pred, ], size=1, color="black", fill = 'transparent') +
+    scale_x_discrete(position = "top",  limits = c(levels(df.table$Pred), "Class Acc.")) +
+    scale_y_discrete(limits = rev(unique(levels(df.table$Pred)))) +
+    labs(x=pred.lab, y=true.lab, fill=NULL,
+         title= paste0(title, "\nAccuracy ", round(100*acc, 1), "%")) +
+    geom_text(aes(x=Pred, y=True, label=value.x),
+              data=df.table, size=4, colour="black") +
+    geom_text(data = class.acc, aes(Pred, True, label = paste0(round(100*value), "%"))) +
+    scale_fill_gradient(low=low.col, high=high.col, labels = scales::percent,
+                        limits = c(0,1), breaks = c(0,0.5,1)) +
+    guides(size="none") +
+    theme_bw() +
+    theme(panel.border = element_blank(), legend.position = "bottom",
+          axis.text = element_text(color='black'), axis.ticks = element_blank(),
+          panel.grid = element_blank(), axis.text.x.top = element_text(angle = 30, vjust = 0, hjust = 0)) +
+    coord_fixed()
+
+} 
+
 ```
 
 ## **<font color=darkblue> Enunciado </font>**
@@ -112,6 +162,8 @@ sat_tst_df <- data_tst      %>%
 ```{r}
 sat_trn_df$C[sat_trn_df$C == 7] <- 6
 sat_tst_df$C[sat_tst_df$C == 7] <- 6
+sat_trn_df_numeric <- data.frame(sat_trn_df)
+sat_tst_df_numeric <- data.frame(sat_tst_df)
 class_names <- c("rojo", "algodón", "gris","gris húmedo", "vegetación", "gris muy húmedo")
 class_values <- c(1,2,3,4,5,6)
 class_map <- setNames(class_names, class_values)
@@ -198,8 +250,115 @@ ggplot(sat_trn_df, aes(x = B1, fill = C)) +
 
 ### **<font color=darkblue> Vecinos Más Cercanos </font>**
 
-### **<font color=darkblue> Regresión Logística </font>**
+
+```{r}
+library(class)
+library(ggplot2)
+
+results <- data.frame(k = 1:100, accuracy = numeric(100))
+
+for (k in 1:100) {
+  knn_model <- knn(train = sat_trn_df[,1:4], test = sat_tst_df[,1:4], cl = sat_trn_df[,5], k = k)
+  
+  accuracy <- mean(knn_model == sat_tst_df[,5]) * 100
+  
+  results[k, ] <- c(k, accuracy)
+}
+
+ggplot(results, aes(x = k, y = accuracy)) + 
+  geom_line() + 
+  labs(x = "k", y = "Accuracy")
+
+best_k <- results$k[which.max(results$accuracy)]
+```
 
 
+```{r}
+best_knn_model <- knn(train = sat_trn_df[,1:4], test = sat_tst_df[,1:4], cl = sat_trn_df[,5], k = best_k)
+
+conf_matrix(sat_tst_df$C,best_knn_model)
+```
 
 
+### **<font color=darkblue> Regresión Logística Multinomial </font>**
+
+```{r}
+sat_trn_df$C <- factor(sat_trn_df$C)
+sat_tst_df$C <- factor(sat_tst_df$C)
+
+model_nnet <- nnet::multinom(C ~ ., data = sat_trn_df)
+
+pred_nnet <- predict(model_nnet, newdata = sat_tst_df, type = "class")
+
+accuracy_nnet <- mean(pred_nnet == sat_tst_df$C)
+cat("Accuracy score for nnet:", round(accuracy_nnet, 3), "\n")
+```
+
+```{r}
+conf_mat <- caret::confusionMatrix(pred_nnet, sat_tst_df$C)
+conf_mat
+```
+
+```{r}
+conf_matrix(sat_tst_df$C,pred_nnet)
+```
+
+```{r}
+probs <- predict(model_nnet, newdata = sat_tst_df, type = "probs")
+ROC <- multiclass.roc(response = sat_tst_df$C, predictor = probs)
+```
+
+```{r}
+auc(ROC)
+```
+
+```{r}
+
+```
+
+
+### **<font color=darkblue> Árbol de Clasificación </font>**
+
+```{r}
+sat_tree <-  rpart(C ~., data= sat_trn_df, method = "class", cp=-1,xval=10, maxdepth=4)
+sat_tree_summary <- printcp(sat_tree)
+```
+
+```{r}
+sat_tree$cptable 
+plotcp(sat_tree)
+```
+
+
+```{r}
+which.min(sat_tree$cptable[,4])
+cp<-sat_tree$cptable[which.min(sat_tree$cptable[,"xerror"]),"CP"]
+cp
+```
+
+```{r}
+poda<-prune(sat_tree,cp=cp)
+```
+
+
+```{r}
+sat_pred = predict(poda, sat_tst_df, type = "class")
+conf_table <- table(sat_tst_df$C,sat_pred)
+conf_matrix(sat_tst_df$C, sat_pred)
+```
+
+```{r}
+rpart.plot(poda)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
