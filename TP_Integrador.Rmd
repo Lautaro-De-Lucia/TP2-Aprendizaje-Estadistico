@@ -252,24 +252,35 @@ ggplot(sat_trn_df, aes(x = B1, fill = C)) +
 
 
 ```{r}
-library(class)
-library(ggplot2)
+set.seed(20)
+ctrl <- trainControl(method = "cv", number = 5)
+k_range <- 1:100
 
-results <- data.frame(k = 1:100, accuracy = numeric(100))
+knn_model <- train(C ~ ., data = sat_trn_df, method = "knn",
+                   trControl = ctrl, tuneGrid = expand.grid(k = k_range),
+                   metric = "Accuracy")
 
-for (k in 1:100) {
-  knn_model <- knn(train = sat_trn_df[,1:4], test = sat_tst_df[,1:4], cl = sat_trn_df[,5], k = k)
-  
-  accuracy <- mean(knn_model == sat_tst_df[,5]) * 100
-  
-  results[k, ] <- c(k, accuracy)
-}
+results <- knn_model$results
 
-ggplot(results, aes(x = k, y = accuracy)) + 
-  geom_line() + 
-  labs(x = "k", y = "Accuracy")
+ggplot(results, aes(x = k, y = Accuracy)) + 
+  geom_line(color = "steelblue", size = 1.2) + 
+  xlab("Valor de K") + 
+  ylab("Exactitud") + 
+  ggtitle("Rendimiento para diferentes valores de K") +
+  theme_bw() + 
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+        axis.title.x = element_text(face = "bold", size = 12),
+        axis.title.y = element_text(face = "bold", size = 12),
+        axis.text = element_text(size = 10),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+```
 
-best_k <- results$k[which.max(results$accuracy)]
+```{r}
+best_k <- results$k[which.max(results$Accuracy)]
+best_k
 ```
 
 
