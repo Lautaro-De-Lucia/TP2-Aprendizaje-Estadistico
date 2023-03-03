@@ -10,20 +10,23 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
+library(rpart)
+library(rpart.plot)
 library(glm2)
 library(GGally)
-library(rpart)  
-library(rpart.plot) 
 library(gridExtra)
+library(randomForest)
 library(class)
 library(viridis)
 library(ggplot2)
 library(ggcorrplot)
 library(glue)
 library(rmarkdown)
+library(boot)
 library(caret)
 library(kableExtra)
 library(pROC)
+library(tree)
 library(jtools)
 library(scatterPlotMatrix)
 suppressMessages(library(tidyverse))
@@ -39,7 +42,7 @@ theme(panel.background = element_rect(fill = "paleturquoise", color = "black"),p
 }
 
 
-conf_matrix <- function(df.true, df.pred, title = "", true.lab ="True Class", pred.lab ="Predicted Class",
+conf_matrix <- function(df.true, df.pred, title = "", true.lab ="Valor Verdadero", pred.lab ="Predicción",
                         high.col = 'green', low.col = 'white') {
   #convert input vector to factors, and ensure they have the same levels
   df.true <- as.factor(df.true)
@@ -56,7 +59,7 @@ conf_matrix <- function(df.true, df.pred, title = "", true.lab ="True Class", pr
   
   #calculate accuracy and class accuracy
   acc.vector <- c(diag(df.cm)) / c(rowSums(df.cm))
-  class.acc <- data.frame(Pred = "Class Acc.", True = names(acc.vector), value = acc.vector)
+  class.acc <- data.frame(Pred = "Prec. Clase", True = names(acc.vector), value = acc.vector)
   acc <- sum(diag(df.cm)) / sum(df.cm)
   
   #plot
@@ -65,10 +68,10 @@ conf_matrix <- function(df.true, df.pred, title = "", true.lab ="True Class", pr
               data=df.table, size=0.2, color=grey(0.5)) +
     geom_tile(aes(x=Pred, y=True),
               data=df.table[df.table$True==df.table$Pred, ], size=1, color="black", fill = 'transparent') +
-    scale_x_discrete(position = "top",  limits = c(levels(df.table$Pred), "Class Acc.")) +
+    scale_x_discrete(position = "top",  limits = c(levels(df.table$Pred), "Prec. Clase")) +
     scale_y_discrete(limits = rev(unique(levels(df.table$Pred)))) +
     labs(x=pred.lab, y=true.lab, fill=NULL,
-         title= paste0(title, "\nAccuracy ", round(100*acc, 1), "%")) +
+         title= paste0(title, "\nPrecisión ", round(100*acc, 1), "%")) +
     geom_text(aes(x=Pred, y=True, label=value.x),
               data=df.table, size=4, colour="black") +
     geom_text(data = class.acc, aes(Pred, True, label = paste0(round(100*value), "%"))) +
@@ -82,6 +85,17 @@ conf_matrix <- function(df.true, df.pred, title = "", true.lab ="True Class", pr
     coord_fixed()
 
 } 
+
+
+utils.conf_matrix <- function(df.true, df.pred) {
+class_names <- c("rojo", "algodón", "gris","gris húmedo", "vegetación", "gris muy húmedo")
+class_values <- c(1,2,3,4,5,6)
+class_map <- setNames(class_names, class_values)
+df.true$C <- class_map[df.true$C]
+num_to_str <- c("1" = "rojo", "2" = "algodón", "3" = "gris", "4" = "gris húmedo", "5" = "vegetación", "6" = "gris muy húmedo")
+df.pred <- num_to_str[as.character(df.pred)]
+return(conf_matrix(df.true$C,df.pred))
+}
 
 ```
 
@@ -172,7 +186,7 @@ sat_tst_df$C <- class_map[sat_tst_df$C]
 ```
 
 
-### **<font color=darkblue> Visualización de los Datos</font>**
+## **<font color=darkblue> Visualización de los Datos</font>**
 
 #### Contenido del Set de Datos
 
@@ -248,20 +262,110 @@ ggplot(sat_trn_df, aes(x = B1, fill = C)) +
   utils.color_theme()
 ```
 
+## **<font color=darkblue>Construcción de Modelos</font>**
+
+```{r}
+sat_trn_df <- data.frame(sat_trn_df_numeric)
+sat_tst_df <- data.frame(sat_tst_df_numeric)
+sat_trn_df$C <- as.factor(sat_trn_df$C)
+sat_tst_df$C <- as.factor(sat_tst_df$C)
+set.seed(20)
+```
+
+### **<font color=darkblue> Árbol de Decisión </font>**
+
+### Librería Tree
+
+
+```{r}
+# Entrenamiento del Modelo
+n <- nrow(sat_trn_df)
+sat_tree <- tree(C ~ B1 + B2 + B3 + B4, 
+                 data= sat_trn_df, 
+                 control=tree.control(
+                   nobs= nrow(sat_trn_df), 
+                   mincut = 1, 
+                   minsize = 2, 
+                   mindev = 0)
+                 )
+# Resultados
+sat_tree_summary <- summary(sat_tree)
+EEnt <- sat_tree_summary$misclass[1] / n
+sat_tree_summary
+```
+
+```{r}
+sat_tree_CV = cv.tree(sat_tree, FUN = prune.misclass)
+size <- sat_tree_CV$size
+dev <- sat_tree_CV$dev
+sp <-ggplot(data=data.frame(size,dev), aes(x=size, y=dev)) +
+  geom_line(linetype="solid", color="blue", size=1.2)+
+  geom_point(color="red", size=3)+
+  labs(x= "Tamaño del Árbol", y = "Error de CV",title="Poda de Complejidad de Costos")
+sp + scale_x_continuous(trans='log10')
+# Agrego código para obtener con R el mejor Tamaño
+best_size <- which.min(sat_tree_CV$dev) 
+best_size
+```
+
+```{r}
+# PQ Harcodea el 13?
+sat_tree_prune = prune.misclass(sat_tree, best = 13)
+plot(sat_tree_prune)
+text(sat_tree_prune, pretty = 0)
+CVErr_tree <- sat_tree_CV$dev[39] / n
+CVErr_tree
+```
+
+### Librería RPart
+
+```{r}
+set.seed(20)
+# Entrenamiento del Modelo con 10-fold CV  
+sat_rpart <-  rpart(C ~ B1 + B2 + B3 + B4, data= sat_trn_df, method = "class", cp=-1,xval=10)
+sat_rpart_summary <- printcp(sat_rpart)
+```
+
+```{r}
+plotcp(sat_rpart) 
+which.min(sat_rpart$cptable[,4])
+cp<-sat_rpart$cptable[which.min(sat_rpart$cptable[,"xerror"]),"CP"]
+cp
+CVErr_rpart = sat_rpart$frame[1,'dev'] / n * sat_rpart$cptable[which.min(sat_rpart$cptable[,"xerror"]),"xerror"]
+CVErr_rpart
+poda_rpart<-prune(sat_rpart,cp=cp)
+rpart.plot(poda_rpart, cex = 0.5, extra = 0)
+```
+
+
+### **<font color=darkblue> Random Forest </font>**
+
+```{r}
+set.seed(20)
+sat_rf<- randomForest(C~., data= sat_trn_df, 
+                     mtry=sqrt(ncol(sat_trn_df)-1), importance=TRUE)
+
+importance(sat_rf)
+varImpPlot(sat_rf)
+CVErr_rf <- unname(sat_rf$err.rate[nrow(sat_rf$err.rate),1])
+CVErr_rf
+```
+
+- ***Obs:***
+Del análisis previo concluimos que el valor del pixel central en la primera banda es el principal predictor de la clase.
+
 ### **<font color=darkblue> Vecinos Más Cercanos </font>**
 
 
 ```{r}
 set.seed(20)
-ctrl <- trainControl(method = "cv", number = 5)
-k_range <- 1:100
-
-knn_model <- train(C ~ ., data = sat_trn_df, method = "knn",
-                   trControl = ctrl, tuneGrid = expand.grid(k = k_range),
+sat_knn <- train(C ~ ., data = sat_trn_df, 
+                   method = "knn",
+                   preProcess = c("center","scale"),
+                   trControl =  trainControl(method = "cv", number = 10),
+                   tuneGrid = expand.grid(k = 1:100),
                    metric = "Accuracy")
-
-results <- knn_model$results
-
+results <- sat_knn$results
 ggplot(results, aes(x = k, y = Accuracy)) + 
   geom_line(color = "steelblue", size = 1.2) + 
   xlab("Valor de K") + 
@@ -276,100 +380,177 @@ ggplot(results, aes(x = k, y = Accuracy)) +
         panel.grid.minor = element_blank(),
         panel.border = element_blank(),
         panel.background = element_blank())
-```
-
-```{r}
 best_k <- results$k[which.max(results$Accuracy)]
 best_k
-```
-
-
-```{r}
-best_knn_model <- knn(train = sat_trn_df[,1:4], test = sat_tst_df[,1:4], cl = sat_trn_df[,5], k = best_k)
-
-conf_matrix(sat_tst_df$C,best_knn_model)
+CVErr_KNN <- 1-unname(sat_knn$results[best_k,"Accuracy"])
+CVErr_KNN
 ```
 
 
 ### **<font color=darkblue> Regresión Logística Multinomial </font>**
 
-```{r}
+```{r,results = FALSE,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
 sat_trn_df$C <- factor(sat_trn_df$C)
-sat_tst_df$C <- factor(sat_tst_df$C)
+#sat_tst_df$C <- factor(sat_tst_df$C)
 
-model_nnet <- nnet::multinom(C ~ ., data = sat_trn_df)
-
-pred_nnet <- predict(model_nnet, newdata = sat_tst_df, type = "class")
-
-accuracy_nnet <- mean(pred_nnet == sat_tst_df$C)
-cat("Accuracy score for nnet:", round(accuracy_nnet, 3), "\n")
-```
-
-```{r}
-conf_mat <- caret::confusionMatrix(pred_nnet, sat_tst_df$C)
-conf_mat
-```
-
-```{r}
-conf_matrix(sat_tst_df$C,pred_nnet)
-```
-
-```{r}
-probs <- predict(model_nnet, newdata = sat_tst_df, type = "probs")
-ROC <- multiclass.roc(response = sat_tst_df$C, predictor = probs)
-```
-
-```{r}
-auc(ROC)
-```
-
-```{r}
-
-```
-
-
-### **<font color=darkblue> Árbol de Clasificación </font>**
-
-```{r}
-sat_tree <-  rpart(C ~., data= sat_trn_df, method = "class", cp=-1,xval=10, maxdepth=4)
-sat_tree_summary <- printcp(sat_tree)
-```
-
-```{r}
-sat_tree$cptable 
-plotcp(sat_tree)
+sat_mlr <- train(C ~ ., 
+               data = sat_trn_df, 
+               method = "multinom", 
+               trControl = trainControl(method = "cv", number = 10))
 ```
 
 
 ```{r}
-which.min(sat_tree$cptable[,4])
-cp<-sat_tree$cptable[which.min(sat_tree$cptable[,"xerror"]),"CP"]
-cp
+summary(sat_mlr)
+#sat_mlr <- nnet::multinom(C ~ ., data = sat_trn_df)
+#summary(sat_rl)
+# Predict the class labels for the training data
+confusion_matrix <- confusionMatrix(predict(sat_mlr, newdata = sat_trn_df), sat_trn_df$C)
+confusion_matrix$overall['Accuracy']
+
+predicted_mlr <- predict(sat_mlr, newdata = sat_trn_df)
+
+CVErr_mlr <- mean(predicted_mlr != sat_trn_df$C)
+CVErr_mlr
+#pred_nnet <- predict(model_nnet, newdata = sat_tst_df, type = "class")
+#accuracy_nnet <- mean(pred_nnet == sat_tst_df$C)
+#cat("Accuracy score for nnet:", round(accuracy_nnet, 3), "\n")
+```
+
+### **<font color=darkblue> Comparación del Error de 10-fold CV</font>**
+
+
+```{r}
+models <- c("tree", "rpart", "RF", "KNN", "RLM")
+CVErrs <- c(CVErr_tree,CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr)
+
+# Combine the arrays into a data frame
+CVErr_df <- data.frame(Label = models, Value = CVErrs)
+
+# Plot a bar chart using ggplot2
+ggplot(CVErr_df, aes(x = Label, y = Value)) + 
+  geom_bar(stat = "identity", color = "black", fill = "red") + labs(x = "Modelos", y = "Error de Validación Cruzada K=10", title = "Comparación de Precisión de Modelos") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 ```{r}
-poda<-prune(sat_tree,cp=cp)
-```
-
-
-```{r}
-sat_pred = predict(poda, sat_tst_df, type = "class")
-conf_table <- table(sat_tst_df$C,sat_pred)
-conf_matrix(sat_tst_df$C, sat_pred)
+#conf_mat <- caret::confusionMatrix(pred_nnet, sat_tst_df$C)
+#conf_mat
 ```
 
 ```{r}
-rpart.plot(poda)
+#conf_matrix(sat_tst_df$C,pred_nnet)
+```
+
+```{r}
+#probs <- predict(model_nnet, newdata = sat_tst_df, type = "probs")
+#ROC <- multiclass.roc(response = sat_tst_df$C, predictor = probs)
+```
+
+```{r}
+#auc(ROC)
 ```
 
 ```{r}
 
 ```
 
+
+## **<font color=darkblue>Evaluación de los Modelos contra el Set de Entrenamiento</font>**
+
+### **<font color=darkblue>Árbol de Clasificación</font>**
+
+### Librería Tree
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+sat_tree_pred <- predict(sat_tree, sat_tst_df, type = "class")
+#conf_table <- table(sat_tst_df$C,sat_tree_pred)
+#conf_table
+utils.conf_matrix(sat_tst_df,sat_tree_pred)
+```
+
+
+### Librería Rpart
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+sat_rpart_pred <- predict(sat_rpart,sat_tst_df,type="class")
+utils.conf_matrix(sat_tst_df,sat_rpart_pred)
+```
+
+### **<font color=darkblue>Random Forest</font>**
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+sat_rf_pred <- predict(sat_rf,sat_tst_df,type="class")
+utils.conf_matrix(sat_tst_df,sat_rf_pred)
+```
+
+### **<font color=darkblue>Regresión Logística Multinomial</font>**
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+sat_mlr_pred <- predict(sat_mlr,sat_tst_df)
+utils.conf_matrix(sat_tst_df,sat_mlr_pred)
+```
+
+### **<font color=darkblue>Vecinos Más Cercanos</font>**
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+sat_knn_pred <- predict(sat_knn,sat_tst_df)
+utils.conf_matrix(sat_tst_df,sat_knn_pred)
+```
+
+### **<font color=darkblue> ANEXO: Análisis Para el Set de Datos Completo </font>**
+
+Queremos comprobar:
+
+- Que el píxel central es en efecto el principal predictor de la clase de la celda
+- Que  despreciar los píxeles adyacentes al píxel central no produce una reducción significativa en el error de clasificación.
+
 ```{r}
 
+sat_trn_df_full <- data_trn
+sat_trn_df_full$V37 <- as.factor(sat_trn_df_full$V37)
+
+n <- nrow(sat_trn_df_full)
+full_tree <- tree(V37 ~., data= sat_trn_df_full, control=tree.control(nobs= nrow(sat_trn_df_full), mincut = 1, minsize = 2))
+full_tree_summary <- summary(full_tree)
+EEnt <- full_tree_summary$misclass[1] / n
+#full_tree_summary
+
+set.seed(20)
+full_tree_CV = cv.tree(full_tree, FUN = prune.misclass)
+full_size <- full_tree_CV$size
+full_dev <- full_tree_CV$dev
+#ggplot(data=data.frame(full_size,full_dev), aes(x=full_size, y=full_dev)) +
+#  geom_line(linetype="solid", color="blue", size=1.2)+
+#  geom_point(color="red", size=3)+
+#  labs(x= "Tamaño del Árbol", y = "Error de CV",title="Poda de Complejidad de Costos")
+
+prune_full = prune.misclass(full_tree, best = 10)
+plot(prune_full)
+text(prune_full, pretty = 0)
+```
+
+
+```{r}
+set.seed(20)
+full_tree_2 <-  rpart(V37 ~., data= sat_trn_df_full, method = "class", cp=-1,xval=10)
+full_tree_2_summary <- printcp(full_tree_2)
+full_tree_2_NP_pred <- predict(full_tree_2, sat_trn_df_full, type = "class")
+# Poda
+#full_tree_2$cptable 
+#plotcp(full_tree_2) #grafico
+#which.min(full_tree_2$cptable[,4])
+cp<-full_tree_2$cptable[which.min(full_tree_2$cptable[,"xerror"]),"CP"]
+poda<-prune(full_tree_2,cp=cp)
+rpart.plot(poda, cex = 0.5, extra = 0)
 ```
 
 ```{r}
+set.seed(20)
+rf_full<- randomForest(V37~., data= sat_trn_df_full, 
+                     mtry=sqrt(ncol(sat_trn_df_full)-1), importance=TRUE)
 
+#importance(rf_full)
+varImpPlot(rf_full)
+unname(rf_full$err.rate[nrow(rf_full$err.rate),1])
 ```
