@@ -20,6 +20,7 @@ library(class)
 library(viridis)
 library(ggplot2)
 library(ggcorrplot)
+library(klaR)
 library(glue)
 library(rmarkdown)
 library(boot)
@@ -97,6 +98,35 @@ df.pred <- num_to_str[as.character(df.pred)]
 return(conf_matrix(df.true$C,df.pred))
 }
 
+utils.OVAROC <- function(test_df,model) {
+
+  pred_probs <- predict(model, newdata = sat_tst_df, type = "prob")
+
+roc_list <- list()
+
+for (class in colnames(pred_probs)) {
+  
+  pred_class_probs <- pred_probs[,class]
+  
+  actual_class <- ifelse(sat_tst_df$C == class, 1, 0)
+  
+  roc_obj <- roc(actual_class, pred_class_probs)
+  
+  roc_list[[class]] <- roc_obj
+}
+
+plot(roc_list[[1]], col = "red", print.auc = TRUE, auc.polygon = TRUE, 
+     main = "OVA ROC Curves", xlab = "False Positive Rate", ylab = "True Positive Rate", 
+     xlim = c(0, 1), ylim = c(0, 1))
+
+for (class in 2:length(roc_list)) {
+  lines(roc_list[[class]], col = rainbow(length(roc_list))[class], print.auc = TRUE, 
+        auc.polygon = TRUE)
+}
+
+legend("bottomright", legend = colnames(pred_probs), col = rainbow(length(roc_list)), lty = 1)  
+}
+
 ```
 
 ## **<font color=darkblue> Enunciado </font>**
@@ -156,7 +186,7 @@ a una sola dataframe.
 file_trn = "SAT_trn.txt"
 data_trn <- read.table(file_trn, sep = "", header=F)
 sat_trn_df <- data_trn      %>% 
-  select(17:20,37)  %>% 
+  dplyr::select(17:20,37)  %>% 
   rename(B1=V17,
          B2=V18,
          B3=V19,
@@ -165,7 +195,7 @@ sat_trn_df <- data_trn      %>%
 file_tst = "SAT_tst.txt"
 data_tst <- read.table(file_tst, sep = "", header=F)
 sat_tst_df <- data_tst      %>% 
-  select(17:20,37)  %>% 
+  dplyr::select(17:20,37)  %>% 
   rename(B1=V17,
          B2=V18,
          B3=V19,
@@ -351,9 +381,6 @@ CVErr_rf <- unname(sat_rf$err.rate[nrow(sat_rf$err.rate),1])
 CVErr_rf
 ```
 
-- ***Obs:***
-Del análisis previo concluimos que el valor del pixel central en la primera banda es el principal predictor de la clase.
-
 ### **<font color=darkblue> Vecinos Más Cercanos </font>**
 
 
@@ -406,28 +433,45 @@ summary(sat_mlr)
 #summary(sat_rl)
 # Predict the class labels for the training data
 confusion_matrix <- confusionMatrix(predict(sat_mlr, newdata = sat_trn_df), sat_trn_df$C)
-confusion_matrix$overall['Accuracy']
+
+CVErr_mlr2 <- 1 - unname(confusion_matrix$overall['Accuracy'])
+CVErr_mlr2
 
 predicted_mlr <- predict(sat_mlr, newdata = sat_trn_df)
 
 CVErr_mlr <- mean(predicted_mlr != sat_trn_df$C)
 CVErr_mlr
-#pred_nnet <- predict(model_nnet, newdata = sat_tst_df, type = "class")
-#accuracy_nnet <- mean(pred_nnet == sat_tst_df$C)
-#cat("Accuracy score for nnet:", round(accuracy_nnet, 3), "\n")
 ```
+
+### **<font color=darkblue> Análisis Discriminante Lineal</font>**
+
+```{r}
+set.seed(20)
+sat_LDA <- stepclass(C ~ B1 + B2 + B3 + B4, data= sat_trn_df, method="lda", criterion = "CR", direction = "both", improvement <- 0.01, fold = 10)
+sat_LDA
+CVErr_LDA <- 1-unname(sat_LDA$result.pm["crossval.rate"])
+```
+
+### **<font color=darkblue> Análisis Discriminante Cuadrático</font>**
+
+
+```{r}
+set.seed(20)
+sat_QDA <- stepclass(C ~ B1 + B2 + B3 + B4, data= sat_trn_df, method="qda", criterion = "CR", direction = "both", improvement <- 0.01, fold = 10)
+sat_QDA
+CVErr_QDA <- 1-unname(sat_QDA$result.pm["crossval.rate"])
+```
+
 
 ### **<font color=darkblue> Comparación del Error de 10-fold CV</font>**
 
 
 ```{r}
-models <- c("tree", "rpart", "RF", "KNN", "RLM")
-CVErrs <- c(CVErr_tree,CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr)
+models <- c("tree", "rpart", "RF", "KNN", "RLM","LDA","QDA")
+CVErrs <- c(CVErr_tree,CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr,CVErr_LDA,CVErr_QDA)
 
-# Combine the arrays into a data frame
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
 
-# Plot a bar chart using ggplot2
 ggplot(CVErr_df, aes(x = Label, y = Value)) + 
   geom_bar(stat = "identity", color = "black", fill = "red") + labs(x = "Modelos", y = "Error de Validación Cruzada K=10", title = "Comparación de Precisión de Modelos") +
   theme(plot.title = element_text(hjust = 0.5))
@@ -467,6 +511,7 @@ sat_tree_pred <- predict(sat_tree, sat_tst_df, type = "class")
 #conf_table <- table(sat_tst_df$C,sat_tree_pred)
 #conf_table
 utils.conf_matrix(sat_tst_df,sat_tree_pred)
+#utils.OVAROC(sat_tst_df,sat_tree)
 ```
 
 
@@ -475,6 +520,7 @@ utils.conf_matrix(sat_tst_df,sat_tree_pred)
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rpart_pred <- predict(sat_rpart,sat_tst_df,type="class")
 utils.conf_matrix(sat_tst_df,sat_rpart_pred)
+utils.OVAROC(sat_tst_df,sat_rpart)
 ```
 
 ### **<font color=darkblue>Random Forest</font>**
@@ -482,6 +528,7 @@ utils.conf_matrix(sat_tst_df,sat_rpart_pred)
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rf_pred <- predict(sat_rf,sat_tst_df,type="class")
 utils.conf_matrix(sat_tst_df,sat_rf_pred)
+utils.OVAROC(sat_tst_df,sat_rf)
 ```
 
 ### **<font color=darkblue>Regresión Logística Multinomial</font>**
@@ -489,6 +536,7 @@ utils.conf_matrix(sat_tst_df,sat_rf_pred)
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_mlr_pred <- predict(sat_mlr,sat_tst_df)
 utils.conf_matrix(sat_tst_df,sat_mlr_pred)
+utils.OVAROC(sat_tst_df,sat_mlr)
 ```
 
 ### **<font color=darkblue>Vecinos Más Cercanos</font>**
@@ -496,7 +544,29 @@ utils.conf_matrix(sat_tst_df,sat_mlr_pred)
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_knn_pred <- predict(sat_knn,sat_tst_df)
 utils.conf_matrix(sat_tst_df,sat_knn_pred)
+utils.OVAROC(sat_tst_df,sat_knn)
 ```
+
+### **<font color=darkblue>Análisis Discriminante Lineal</font>**
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+sat_LDA_pred <- predict(train(sat_LDA$formula, data= sat_trn_df, method="lda", trControl = trainControl(method = "cv")),sat_tst_df)
+utils.conf_matrix(sat_tst_df,sat_LDA_pred)
+utils.OVAROC(sat_tst_df,train(sat_LDA$formula, data= sat_trn_df, method="lda", trControl = trainControl(method = "cv")))
+```
+
+### **<font color=darkblue>Análisis Discriminante Cuadrático</font>**
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+sat_QDA_pred <- predict(train(sat_QDA$formula, data= sat_trn_df, method="qda", trControl = trainControl(method = "cv")),sat_tst_df)
+utils.conf_matrix(sat_tst_df,sat_QDA_pred)
+utils.OVAROC(sat_tst_df,train(sat_QDA$formula, data= sat_trn_df, method="lda", trControl = trainControl(method = "cv")))
+```
+
+```{r}
+
+```
+
 
 ### **<font color=darkblue> ANEXO: Análisis Para el Set de Datos Completo </font>**
 
