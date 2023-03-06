@@ -283,18 +283,9 @@ vio_B4 <- ggplot(sat_trn_df, aes(x = C, y = B4, fill = C)) +
 grid.arrange(vio_B1,vio_B2,vio_B3,vio_B4, nrow =2, ncol = 2)
 ```
 
-```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
-library(ggplot2)
-
-ggplot(sat_trn_df, aes(x = B1, fill = C)) + 
-  geom_bar(position = "stack") +
-  labs(x = "B1", y = "Count", fill = "Category") + 
-  utils.color_theme()
-```
-
 ## **<font color=darkblue>Construcción de Modelos</font>**
 
-```{r}
+```{r, echo=FALSE}
 sat_trn_df <- data.frame(sat_trn_df_numeric)
 sat_tst_df <- data.frame(sat_tst_df_numeric)
 sat_trn_df$C <- as.factor(sat_trn_df$C)
@@ -304,53 +295,10 @@ set.seed(20)
 
 ### **<font color=darkblue> Árbol de Decisión </font>**
 
-### Librería Tree
-
-
-```{r}
-# Entrenamiento del Modelo
-n <- nrow(sat_trn_df)
-sat_tree <- tree(C ~ B1 + B2 + B3 + B4, 
-                 data= sat_trn_df, 
-                 control=tree.control(
-                   nobs= nrow(sat_trn_df), 
-                   mincut = 1, 
-                   minsize = 2, 
-                   mindev = 0)
-                 )
-# Resultados
-sat_tree_summary <- summary(sat_tree)
-EEnt <- sat_tree_summary$misclass[1] / n
-sat_tree_summary
-```
-
-```{r}
-sat_tree_CV = cv.tree(sat_tree, FUN = prune.misclass)
-size <- sat_tree_CV$size
-dev <- sat_tree_CV$dev
-sp <-ggplot(data=data.frame(size,dev), aes(x=size, y=dev)) +
-  geom_line(linetype="solid", color="blue", size=1.2)+
-  geom_point(color="red", size=3)+
-  labs(x= "Tamaño del Árbol", y = "Error de CV",title="Poda de Complejidad de Costos")
-sp + scale_x_continuous(trans='log10')
-# Agrego código para obtener con R el mejor Tamaño
-best_size <- which.min(sat_tree_CV$dev) 
-best_size
-```
-
-```{r}
-# PQ Harcodea el 13?
-sat_tree_prune = prune.misclass(sat_tree, best = 13)
-plot(sat_tree_prune)
-text(sat_tree_prune, pretty = 0)
-CVErr_tree <- sat_tree_CV$dev[39] / n
-CVErr_tree
-```
-
-### Librería RPart
 
 ```{r}
 set.seed(20)
+n <- nrow(sat_trn_df)
 # Entrenamiento del Modelo con 10-fold CV  
 sat_rpart <-  rpart(C ~ B1 + B2 + B3 + B4, data= sat_trn_df, method = "class", cp=-1,xval=10)
 sat_rpart_summary <- printcp(sat_rpart)
@@ -467,8 +415,8 @@ CVErr_QDA <- 1-unname(sat_QDA$result.pm["crossval.rate"])
 
 
 ```{r}
-models <- c("tree", "rpart", "RF", "KNN", "RLM","LDA","QDA")
-CVErrs <- c(CVErr_tree,CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr,CVErr_LDA,CVErr_QDA)
+models <- c("rpart", "RF", "KNN", "RLM","LDA","QDA")
+CVErrs <- c(CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr,CVErr_LDA,CVErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
 
@@ -503,18 +451,6 @@ ggplot(CVErr_df, aes(x = Label, y = Value)) +
 ## **<font color=darkblue>Evaluación de los Modelos contra el Set de Entrenamiento</font>**
 
 ### **<font color=darkblue>Árbol de Clasificación</font>**
-
-### Librería Tree
-
-```{r,echo=FALSE,warning=FALSE,message=FALSE}
-sat_tree_pred <- predict(sat_tree, sat_tst_df, type = "class")
-utils.conf_matrix(sat_tst_df,sat_tree_pred)
-CLErr_tree <- mean(sat_tree_pred != sat_tst_df$C)
-#utils.OVAROC(sat_tst_df,sat_tree)
-```
-
-
-### Librería Rpart
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rpart_pred <- predict(sat_rpart,sat_tst_df,type="class")
@@ -572,8 +508,8 @@ CLErr_QDA <- mean(sat_QDA_pred != sat_tst_df$C)
 
 
 ```{r}
-models <- c("tree", "rpart", "RF", "KNN", "RLM","LDA","QDA")
-CVErrs <- c(CLErr_tree,CLErr_rpart,CLErr_rf,CLErr_knn,CLErr_mlr,CLErr_LDA,CLErr_QDA)
+models <- c("rpart", "RF", "KNN", "RLM","LDA","QDA")
+CVErrs <- c(CLErr_rpart,CLErr_rf,CLErr_knn,CLErr_mlr,CLErr_LDA,CLErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
 
@@ -583,7 +519,7 @@ ggplot(CVErr_df, aes(x = Label, y = Value)) +
 ```
 
 
-### **<font color=darkblue> ANEXO: Análisis Para el Set de Datos Completo </font>**
+## **<font color=darkblue> Análisis Para el Set de Datos Completo </font>**
 
 ```{r, echo=FALSE,warning=FALSE,message=FALSE}
 
@@ -598,49 +534,6 @@ sat_tst_full_df$C <- as.factor(sat_tst_full_df$C)
 
 ### **<font color=darkblue> Árbol de Decisión </font>**
 
-### Librería Tree
-
-
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-# Entrenamiento del Modelo
-sat_tree <- tree(C ~ ., 
-                 data= sat_trn_full_df, 
-                 control=tree.control(
-                   nobs= nrow(sat_trn_full_df), 
-                   mincut = 1, 
-                   minsize = 2, 
-                   mindev = 0)
-                 )
-# Resultados
-sat_tree_summary <- summary(sat_tree)
-#EEnt <- sat_tree_summary$misclass[1] / n
-sat_tree_summary
-```
-
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-sat_tree_CV = cv.tree(sat_tree, FUN = prune.misclass)
-size <- sat_tree_CV$size
-dev <- sat_tree_CV$dev
-sp <-ggplot(data=data.frame(size,dev), aes(x=size, y=dev)) +
-  geom_line(linetype="solid", color="blue", size=1.2)+
-  geom_point(color="red", size=3)+
-  labs(x= "Tamaño del Árbol", y = "Error de CV",title="Poda de Complejidad de Costos")
-sp + scale_x_continuous(trans='log10')
-# Agrego código para obtener con R el mejor Tamaño
-best_size <- which.min(sat_tree_CV$dev) 
-best_size
-```
-
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-# PQ Harcodea el 13?
-sat_tree_prune = prune.misclass(sat_tree, best = 13)
-plot(sat_tree_prune)
-text(sat_tree_prune, pretty = 0)
-CVErr_tree <- sat_tree_CV$dev[39] / n
-CVErr_tree
-```
-
-### Librería RPart
 
 ```{r, echo=FALSE,warning=FALSE,message=FALSE}
 set.seed(20)
@@ -754,8 +647,8 @@ CVErr_QDA <- 1-unname(sat_QDA$result.pm["crossval.rate"])
 
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
-models <- c("tree", "rpart", "RF", "KNN", "RLM","LDA","QDA")
-CVErrs <- c(CVErr_tree,CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr,CVErr_LDA,CVErr_QDA)
+models <- c("rpart", "RF", "KNN", "RLM","LDA","QDA")
+CVErrs <- c(CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr,CVErr_LDA,CVErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
 
@@ -768,18 +661,6 @@ ggplot(CVErr_df, aes(x = Label, y = Value)) +
 ## **<font color=darkblue>Evaluación de los Modelos contra el Set de Entrenamiento</font>**
 
 ### **<font color=darkblue>Árbol de Clasificación</font>**
-
-### Librería Tree
-
-```{r,echo=FALSE,warning=FALSE,message=FALSE}
-sat_tree_pred <- predict(sat_tree, sat_tst_full_df, type = "class")
-utils.conf_matrix(sat_tst_full_df,sat_tree_pred)
-CLErr_tree <- mean(sat_tree_pred != sat_tst_full_df$C)
-#utils.OVAROC(sat_tst_df,sat_tree)
-```
-
-
-### Librería Rpart
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rpart_pred <- predict(sat_rpart,sat_tst_full_df,type="class")
@@ -837,8 +718,8 @@ CLErr_QDA <- mean(sat_QDA_pred != sat_tst_full_df$C)
 
 
 ```{r}
-models <- c("tree", "rpart", "RF", "KNN", "RLM","LDA","QDA")
-CVErrs <- c(CLErr_tree,CLErr_rpart,CLErr_rf,CLErr_knn,CLErr_mlr,CLErr_LDA,CLErr_QDA)
+models <- c("rpart", "RF", "KNN", "RLM","LDA","QDA")
+CVErrs <- c(CLErr_rpart,CLErr_rf,CLErr_knn,CLErr_mlr,CLErr_LDA,CLErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
 
@@ -846,4 +727,6 @@ ggplot(CVErr_df, aes(x = Label, y = Value)) +
   geom_bar(stat = "identity", color = "black", fill = "red") + labs(x = "Modelos", y = "Error de Clasificación", title = "Comparación de Precisión de Modelos") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
+
+## **<font color=darkblue> Observaciones y Conclusiones </font>**
 
