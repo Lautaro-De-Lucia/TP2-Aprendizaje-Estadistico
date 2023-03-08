@@ -2,7 +2,9 @@
 title: "TP Integrador - Aprendizaje Estadístico"
 author: "Santiago Bertero - Lautaro De Lucia"
 date: "2023-01-17"
-output: html_document
+output: 
+  html_document: 
+    highlight: espresso
 ---
 
 ![](satellite.png)
@@ -129,13 +131,15 @@ legend("bottomright", legend = colnames(pred_probs), col = rainbow(length(roc_li
 
 ```
 
-## **<font color=darkblue> Enunciado </font>**
+----
+
+# **<font color=darkblue> Enunciado </font>**
+
+----
+
+- #### **Consigna**
 
 En el archivo ***sat.txt*** se tienen datos de valores de espectros de pixels en una imagen de satélite utilizados para la ***predicción de la clase de suelo***. Realice un análisis de los datos utilizando diferentes métodos y compárelos mediante Validación Cruzada. Luego aplíquelos a la muestra de test ***sat.tst*** y analice los resultados obtenidos.
-
-## **<font color=darkblue> Descripción de los Datos</font>**
-
-<br>
 
 - #### **Propósito**
 
@@ -145,7 +149,7 @@ La base de datos contiene los valores multi-espectrales de píxeles en regiones 
 
 Esta base de datos se generó a partir del ***escáner multi-espectral LANDSAT***. Un marco de imágenes Landsat MSS consta de ***cuatro imágenes*** digitales de la misma escena en ***diferentes bandas espectrales***. Dos de estos están en la región visible (correspondiente aproximadamente a las regiones verdes y rojas del espectro visible) y dos están en el infrarrojo. Cada ***píxel*** es una palabra binaria de 8 bits, con ***0*** correspondiente al negro y ***255*** a blanco. La resolución espacial de un píxel es de unos 80 m x 80m. Cada imagen contiene 2340 x 3380 de tales píxeles. 
 
-La base de datos es una subárea (pequeña) de una escena, que consta de 82 x 100 píxeles. ***Cada línea de datos corresponde a una región de píxeles cuadrados 3x3*** completamente contenida dentro de la subárea 82x100. Cada línea contiene los valores de píxeles en las cuatro bandas espectrales (convertidas en ASCII) de cada uno de los 9 píxeles en la región 3x3 y un número que indica la etiqueta de clasificación del píxel central.
+La base de datos es una subárea (pequeña) de una escena, que consta de 82 x 100 píxeles. ***Cada fila del set de datos se corresponde a una región de píxeles cuadrados 3x3*** completamente contenida dentro de la subárea 82x100. Contiene los valoresen las cuatro bandas espectrales (convertidas en ASCII) para cada uno de los 9 píxeles en la región 3x3 y un número que indica la etiqueta de clasificación del píxel central.
 
 La ***clase*** de cada píxel se codifica como un número, siendo estos:
 
@@ -158,7 +162,7 @@ La ***clase*** de cada píxel se codifica como un número, siendo estos:
 - ***7:*** suelo gris muy húmedo  
 
    -   **<font color='red'>N.B</font>**:
-No hay ejemplos con la clase 6 en este conjunto de datos (fueron removidos debido a dudas respecto a la validez de esta clase). Los datos se dan en orden aleatorio y se han eliminado ciertas líneas de datos para que no pueda reconstruir la imagen original a partir de este conjunto de datos.
+No hay ejemplos con la clase 6 en este conjunto de datos (fueron removidos debido a dudas respecto a la validez de esta clase). Los datos se dan en orden aleatorio y se han eliminado ciertas líneas de datos para que no se pueda reconstruir la imagen original a partir de este conjunto de datos.
 
 En cada línea de datos, ***los cuatro valores espectrales para el píxel superior izquierdo se dan primero***, seguidos por los cuatro valores espectrales para el píxel medio superior y luego los del píxel superior derecho, y así sucesivamente de modo que ***los píxeles se leen en secuencia de izquierda a derecha y de arriba a abajo***. Por lo tanto, los cuatro valores espectrales para los píxeles centrales están dados por los atributos 17,18,19 y 20. ***Si lo desea, puede usar solo estos cuatro atributos***, ignorando los demás.
 
@@ -168,18 +172,34 @@ En cada línea de datos, ***los cuatro valores espectrales para el píxel superi
 - ***CLASES*** &rarr; 6 en total: {1,2,3,4,5,7}
 
 
-## **<font color=darkblue> Resolución </font>**
+----
 
-### **<font color=darkblue> Obtención del Set de Datos </font>**
+# **<font color=darkblue> Procedimiento </font>**
 
-Dado que el enunciado menciona que pueden utilizarse solo los datos espectrales
-correspondientes al píxel central, buscamos extraerlos, junto con su clasificación,
-a una sola dataframe.
+----
 
 
+- Empezamos tomando como válida la hipótesis del enunciado, la cual sugiere que el análisis puede conducirse tomando solo el píxel central. Extraemos los datos de entrenamiento y prueba para el píxel central a dos Data Frames: ***sat_trn_df*** y ***sat_tst_df*** respectivamente. Estos tendrán los valores para el píxel central en las cuatro bandas espectrales así como la clase correspondiente, resultando en Data Frames de 5 columnas en total.
+
+- Realizamos un breve análisis de visualización de estos datos. Este nos permite comprender su estructura y distribución, así como estimar la similitud entre los datos de prueba y entrenamiento.
+
+- Constriumos los distintos modelos aplicables a un problema de clasificación multi-clase. Puntualmente: ***Árbol de Decisión, Random Forest, Vecinos Más Cercanos, Regresión Logística Multinomial, Análisis Discriminante Lineal y Cuadrático***. Primero entrenamos estos modelos contra el set de entrenamiento y luego los evaluamos contra el mismo set de entrenamiento realizando Validación Cruzada con $K=10$. En la medida en que exista una alta similitud entre los datos de entrenamiento y prueba, es justo asumir que el error de clasificación estimado de esta forma será semejante al obtenido al evaluar los modelos contra el set de prueba. 
+
+- Evaluamos los modelos contra el set de prueba, derivando distintas métricas como el ***Error de Clasificación***, ***Tablas de Confusión*** y ***Curvas ROC*** y realizamos un análisis comparativo de los modelos.
+
+- Por último, repetimos todo el análisis precedente ahora tomando en cuenta todos los píxeles a modo de corroborar la hipótesis del enunciado y derivamos observaciones y conclusiones generales de este análisis.
+
+----
+
+# **<font color=darkblue> Obtención de los Datos </font>**
+
+----
+
+<br>
+
+Dado que el enunciado menciona que pueden utilizarse solo los datos espectrales correspondientes al píxel central, buscamos extraerlos, junto con su clasificación, a una sola Data Frame.
 
 ![](Explicacion_TP2_español.drawio.png)
-
 
 
 ```{r}
@@ -215,27 +235,27 @@ sat_trn_df$C <- class_map[sat_trn_df$C]
 sat_tst_df$C <- class_map[sat_tst_df$C]
 ```
 
+----
 
-## **<font color=darkblue> Visualización de los Datos</font>**
+# **<font color=darkblue> Visualización de los Datos</font>**
 
-#### Contenido del Set de Datos
+----
+
+- #### **Contenidos del Set de Datos**
+
+<br>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 utils.DataFrame.print(sat_trn_df,10)
 ```
 
-Podemos comprobar que tenemos valores acotados entre 0 y 255 para cuatro bandas espectrales y una categoría de suelo asignada en cada fila. Los contenidos pueden visualizarse mejor utilizando un gráfico de coordenadas paralelas.
+- Podemos comprobar que tenemos valores acotados entre 0 y 255 para cuatro bandas espectrales y una categoría de suelo asignada en cada fila.
 
-```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
-gpc_trn <- ggparcoord(sat_trn_df, columns = 1:4, groupColumn = "C", scale='globalminmax',title="Datos de Entrenamiento") + 
-scale_colour_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')) + 
-utils.color_theme()
-gpc_tst <- ggparcoord(sat_tst_df, columns = 1:4, groupColumn = "C",scale='globalminmax',title="Datos de Prueba") +  scale_colour_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')) +
-utils.color_theme()
-grid.arrange(gpc_trn, gpc_tst, nrow = 2)
-```
+<br>
 
-Donde cada linea representa una observación para las 4 bandas. La normalización de los valores no es necesaria ya que $B_1:B_4$ estan en la misma escala. Podemos ver que la distribución de suelo en los datos de entrenamiento y prueba es practicamente la misma.
+- #### **Estructura y Distribución de los Datos**
+
+<br>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
 ggpairs(sat_trn_df, aes(color = C)) + scale_fill_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')) + scale_colour_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')) + 
@@ -283,7 +303,31 @@ vio_B4 <- ggplot(sat_trn_df, aes(x = C, y = B4, fill = C)) +
 grid.arrange(vio_B1,vio_B2,vio_B3,vio_B4, nrow =2, ncol = 2)
 ```
 
-## **<font color=darkblue>Construcción de Modelos</font>**
+- Observamos que los valores espectrales para los 3 tipos de suelo gris son similares en todas las bandas, por lo que es justo esperar un error de clasificación mayor entre estas tres clases. Conversamente, es justo esperar que el error de clasificación para el algodón y el suelo rojo sea considerablemente más bajo dados sus valores distintivos en las cuatro bandas.
+
+<br>
+
+- #### **Comparación entre Set de Entrenamiento y Prueba**
+
+<br>
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
+gpc_trn <- ggparcoord(sat_trn_df, columns = 1:4, groupColumn = "C", scale='globalminmax',title="Datos de Entrenamiento") + 
+scale_colour_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')) + 
+utils.color_theme() + xlab("Bandas") + ylab("Valores")
+gpc_tst <- ggparcoord(sat_tst_df, columns = 1:4, groupColumn = "C",scale='globalminmax',title="Datos de Prueba") +  scale_colour_manual(values=c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')) +
+utils.color_theme() + xlab("Bandas") + ylab("Valores")
+grid.arrange(gpc_trn, gpc_tst, nrow = 2)
+```
+
+- Cada linea representa una observación para las 4 bandas. La normalización de los valores no es necesaria ya que $B_1:B_4$ estan en la misma escala. Podemos ver que ***la distribución de suelo en los datos de entrenamiento y prueba es practicamente la misma***.
+
+
+----
+
+# **<font color=darkblue>Construcción de Modelos</font>**
+
+----
 
 ```{r, echo=FALSE}
 sat_trn_df <- data.frame(sat_trn_df_numeric)
@@ -294,7 +338,6 @@ set.seed(20)
 ```
 
 ### **<font color=darkblue> Árbol de Decisión </font>**
-
 
 ```{r}
 set.seed(20)
@@ -425,32 +468,13 @@ ggplot(CVErr_df, aes(x = Label, y = Value)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-```{r}
-#conf_mat <- caret::confusionMatrix(pred_nnet, sat_tst_df$C)
-#conf_mat
-```
+----
 
-```{r}
-#conf_matrix(sat_tst_df$C,pred_nnet)
-```
+# **<font color=darkblue>Evaluación de los Modelos contra el Set de Entrenamiento</font>**
 
-```{r}
-#probs <- predict(model_nnet, newdata = sat_tst_df, type = "probs")
-#ROC <- multiclass.roc(response = sat_tst_df$C, predictor = probs)
-```
+----
 
-```{r}
-#auc(ROC)
-```
-
-```{r}
-
-```
-
-
-## **<font color=darkblue>Evaluación de los Modelos contra el Set de Entrenamiento</font>**
-
-### **<font color=darkblue>Árbol de Clasificación</font>**
+### **<font color=darkblue>Árbol de Decisión</font>**
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rpart_pred <- predict(sat_rpart,sat_tst_df,type="class")
@@ -518,8 +542,11 @@ ggplot(CVErr_df, aes(x = Label, y = Value)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+----
 
 ## **<font color=darkblue> Análisis Para el Set de Datos Completo </font>**
+
+----
 
 ```{r, echo=FALSE,warning=FALSE,message=FALSE}
 
@@ -657,10 +684,13 @@ ggplot(CVErr_df, aes(x = Label, y = Value)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+----
 
 ## **<font color=darkblue>Evaluación de los Modelos contra el Set de Entrenamiento</font>**
 
-### **<font color=darkblue>Árbol de Clasificación</font>**
+----
+
+### **<font color=darkblue>Árbol de Decisión</font>**
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rpart_pred <- predict(sat_rpart,sat_tst_full_df,type="class")
@@ -728,5 +758,8 @@ ggplot(CVErr_df, aes(x = Label, y = Value)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-## **<font color=darkblue> Observaciones y Conclusiones </font>**
+----
 
+## **<font color=darkblue> Observaciones y Conclusiones Generales </font>**
+
+----
