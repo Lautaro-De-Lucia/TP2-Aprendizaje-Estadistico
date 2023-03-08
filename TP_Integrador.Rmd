@@ -107,18 +107,14 @@ utils.OVAROC <- function(test_df,model) {
 roc_list <- list()
 
 for (class in colnames(pred_probs)) {
-  
   pred_class_probs <- pred_probs[,class]
-  
   actual_class <- ifelse(test_df$C == class, 1, 0)
-  
   roc_obj <- roc(actual_class, pred_class_probs)
-  
   roc_list[[class]] <- roc_obj
 }
 
 plot(roc_list[[1]], col = "red", print.auc = TRUE, auc.polygon = TRUE, 
-     main = "OVA ROC Curves", xlab = "False Positive Rate", ylab = "True Positive Rate", 
+     main = "ROC One vs All", xlab = "Falsos Positivos", ylab = "Verdaderos Positivos", 
      xlim = c(0, 1), ylim = c(0, 1))
 
 for (class in 2:length(roc_list)) {
@@ -126,7 +122,11 @@ for (class in 2:length(roc_list)) {
         auc.polygon = TRUE)
 }
 
-legend("bottomright", legend = colnames(pred_probs), col = rainbow(length(roc_list)), lty = 1)  
+
+class_names <- c("rojo", "algodón", "gris","gris húmedo", "vegetación", "gris muy húmedo")
+colors <- c('white','antiquewhite4','gray40','gray20','sienna3','olivedrab')
+
+legend("bottomright", legend = class_names, col = rainbow(length(roc_list)), lty = 1, cex = 0.8)  
 }
 
 ```
@@ -349,15 +349,12 @@ sat_rpart_summary <- printcp(sat_rpart)
 
 ```{r}
 plotcp(sat_rpart) 
-which.min(sat_rpart$cptable[,4])
+t_nodes <- which.min(sat_rpart$cptable[,4])
 cp<-sat_rpart$cptable[which.min(sat_rpart$cptable[,"xerror"]),"CP"]
-cp
 CVErr_rpart = sat_rpart$frame[1,'dev'] / n * sat_rpart$cptable[which.min(sat_rpart$cptable[,"xerror"]),"xerror"]
-CVErr_rpart
 poda_rpart<-prune(sat_rpart,cp=cp)
 rpart.plot(poda_rpart, cex = 0.5, extra = 0)
 ```
-
 
 ### **<font color=darkblue> Random Forest </font>**
 
@@ -399,17 +396,13 @@ ggplot(results, aes(x = k, y = Accuracy)) +
         panel.border = element_blank(),
         panel.background = element_blank())
 best_k <- results$k[which.max(results$Accuracy)]
-best_k
 CVErr_KNN <- 1-unname(sat_knn$results[best_k,"Accuracy"])
-CVErr_KNN
 ```
-
 
 ### **<font color=darkblue> Regresión Logística Multinomial </font>**
 
 ```{r,results = FALSE,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
 sat_trn_df$C <- factor(sat_trn_df$C)
-#sat_tst_df$C <- factor(sat_tst_df$C)
 
 sat_mlr <- train(C ~ ., 
                data = sat_trn_df, 
@@ -420,18 +413,8 @@ sat_mlr <- train(C ~ .,
 
 ```{r}
 summary(sat_mlr)
-#sat_mlr <- nnet::multinom(C ~ ., data = sat_trn_df)
-#summary(sat_rl)
-# Predict the class labels for the training data
-confusion_matrix <- confusionMatrix(predict(sat_mlr, newdata = sat_trn_df), sat_trn_df$C)
-
-CVErr_mlr2 <- 1 - unname(confusion_matrix$overall['Accuracy'])
-CVErr_mlr2
-
 predicted_mlr <- predict(sat_mlr, newdata = sat_trn_df)
-
 CVErr_mlr <- mean(predicted_mlr != sat_trn_df$C)
-CVErr_mlr
 ```
 
 ### **<font color=darkblue> Análisis Discriminante Lineal</font>**
@@ -463,9 +446,12 @@ CVErrs <- c(CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr,CVErr_LDA,CVErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
 
-ggplot(CVErr_df, aes(x = Label, y = Value)) + 
-  geom_bar(stat = "identity", color = "black", fill = "red") + labs(x = "Modelos", y = "Error de Validación Cruzada K=10", title = "Comparación de Precisión de Modelos") +
+CVErr_plot <- ggplot(CVErr_df, aes(x = Label, y = Value)) + 
+  geom_bar(stat = "identity", color = "black", fill = "red") + labs(x = "Modelos", y = "Error de Validación Cruzada (K=10)", title = "Comparación de Precisión de Modelos") +
   theme(plot.title = element_text(hjust = 0.5))
+
+CVErr_plot
+
 ```
 
 ----
@@ -537,9 +523,11 @@ CVErrs <- c(CLErr_rpart,CLErr_rf,CLErr_knn,CLErr_mlr,CLErr_LDA,CLErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
 
-ggplot(CVErr_df, aes(x = Label, y = Value)) + 
+CErr_plot <-  ggplot(CVErr_df, aes(x = Label, y = Value)) + 
   geom_bar(stat = "identity", color = "black", fill = "red") + labs(x = "Modelos", y = "Error de Clasificación", title = "Comparación de Precisión de Modelos") +
   theme(plot.title = element_text(hjust = 0.5))
+
+CErr_plot
 ```
 
 ----
@@ -573,9 +561,7 @@ sat_rpart_summary <- printcp(sat_rpart)
 plotcp(sat_rpart) 
 which.min(sat_rpart$cptable[,4])
 cp<-sat_rpart$cptable[which.min(sat_rpart$cptable[,"xerror"]),"CP"]
-cp
 CVErr_rpart = sat_rpart$frame[1,'dev'] / n * sat_rpart$cptable[which.min(sat_rpart$cptable[,"xerror"]),"xerror"]
-CVErr_rpart
 poda_rpart<-prune(sat_rpart,cp=cp)
 rpart.plot(poda_rpart, cex = 0.5, extra = 0)
 ```
@@ -591,7 +577,6 @@ sat_rf<- randomForest(C ~ ., data= sat_trn_full_df,
 importance(sat_rf)
 varImpPlot(sat_rf)
 CVErr_rf <- unname(sat_rf$err.rate[nrow(sat_rf$err.rate),1])
-CVErr_rf
 ```
 
 ### **<font color=darkblue> Vecinos Más Cercanos </font>**
@@ -621,18 +606,13 @@ ggplot(results, aes(x = k, y = Accuracy)) +
         panel.border = element_blank(),
         panel.background = element_blank())
 best_k <- results$k[which.max(results$Accuracy)]
-best_k
 CVErr_KNN <- 1-unname(sat_knn$results[best_k,"Accuracy"])
-CVErr_KNN
 ```
 
 
 ### **<font color=darkblue> Regresión Logística Multinomial </font>**
 
 ```{r,results = FALSE,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
-#sat_trn_df$C <- factor(sat_trn_df$C)
-#sat_tst_df$C <- factor(sat_tst_df$C)
-
 sat_mlr <- train(C ~ ., 
                data = sat_trn_full_df, 
                method = "multinom", 
@@ -642,12 +622,8 @@ sat_mlr <- train(C ~ .,
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 summary(sat_mlr)
-#sat_mlr <- nnet::multinom(C ~ ., data = sat_trn_df)
-#summary(sat_rl)
-# Predict the class labels for the training data
 predicted_mlr <- predict(sat_mlr, newdata = sat_trn_full_df)
 CVErr_mlr <- mean(predicted_mlr != sat_trn_full_df$C)
-CVErr_mlr
 ```
 
 ### **<font color=darkblue> Análisis Discriminante Lineal</font>**
@@ -679,9 +655,11 @@ CVErrs <- c(CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr,CVErr_LDA,CVErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
 
-ggplot(CVErr_df, aes(x = Label, y = Value)) + 
-  geom_bar(stat = "identity", color = "black", fill = "red") + labs(x = "Modelos", y = "Error de Validación Cruzada K=10", title = "Comparación de Precisión de Modelos") +
+CVErr_plot_full <- ggplot(CVErr_df, aes(x = Label, y = Value)) + 
+  geom_bar(stat = "identity", color = "black", fill = "red") + labs(x = "Modelos", y = "Error de Validación Cruzada (K=10)", title = "Comparación de Precisión de Modelos") +
   theme(plot.title = element_text(hjust = 0.5))
+
+CVErr_plot_full
 ```
 
 ----
@@ -753,9 +731,11 @@ CVErrs <- c(CLErr_rpart,CLErr_rf,CLErr_knn,CLErr_mlr,CLErr_LDA,CLErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
 
-ggplot(CVErr_df, aes(x = Label, y = Value)) + 
+CErr_plot_full <- ggplot(CVErr_df, aes(x = Label, y = Value)) + 
   geom_bar(stat = "identity", color = "black", fill = "red") + labs(x = "Modelos", y = "Error de Clasificación", title = "Comparación de Precisión de Modelos") +
   theme(plot.title = element_text(hjust = 0.5))
+
+CErr_plot_full
 ```
 
 ----
@@ -763,3 +743,27 @@ ggplot(CVErr_df, aes(x = Label, y = Value)) +
 ## **<font color=darkblue> Observaciones y Conclusiones Generales </font>**
 
 ----
+
+- Comparando el Error de Clasificación de los modelos considerando unicamente el pixel central y considerando todo el set de datos, concluímos que ***la hipótesis del enunciado no es válida***, ya que se obtiene una reducción considerable en el error de clasificación al considerar todos los datos, así como una mayor variabilidad entre modelos.
+
+```{r}
+
+CVErr_plot$labels$title <- "Error de CV (píxel central)"
+CErr_plot$labels$title <-  "Error de Clasificación (píxel central)"
+CVErr_plot_full$labels$title <- "Error de CV (completo)"
+CErr_plot_full$labels$title <- "Error de Clasificación (completo)"
+
+grid.arrange(CVErr_plot,
+            CErr_plot,
+            CVErr_plot_full,
+            CErr_plot_full, 
+            ncol = 2)
+```
+
+- Considerando todos los datos, el mejor resultado se obtiene para ***Random Forest*** con un error de clasificación de aproximadamente el 8%, seguido de ***KNN*** con un error de clasificación de aproximadamente el 9%.
+
+<center>
+
+## **< <font color=darkorange> COMPLETAR</font> >** 
+
+</center>
