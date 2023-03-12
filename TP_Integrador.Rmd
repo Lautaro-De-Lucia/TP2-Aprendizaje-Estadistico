@@ -1,7 +1,6 @@
 ---
 title: "TP Integrador - Aprendizaje Estadístico"
 author: "Santiago Bertero - Lautaro De Lucia"
-date: "2023-01-17"
 output: 
   html_document: 
     highlight: espresso
@@ -131,76 +130,84 @@ legend("bottomright", legend = class_names, col = rainbow(length(roc_list)), lty
 
 ```
 
-----
+------------------------------------------------------------------------
 
-# **<font color=darkblue> Enunciado </font>**
+# <font color=darkblue> Enunciado </font>
 
-----
+------------------------------------------------------------------------
 
-- #### **Consigna**
+-   
 
-En el archivo ***sat.txt*** se tienen datos de valores de espectros de pixels en una imagen de satélite utilizados para la ***predicción de la clase de suelo***. Realice un análisis de los datos utilizando diferentes métodos y compárelos mediante Validación Cruzada. Luego aplíquelos a la muestra de test ***sat.tst*** y analice los resultados obtenidos.
+    #### **Consigna**
 
-- #### **Propósito**
+En el archivo ***sat.txt*** se tiene datos de valores de espectros de pixels en una imagen de satélite, utilizados para la ***predicción de la clase de suelo***. Realice un análisis de los datos utilizando diferentes métodos y compárelos mediante Validación Cruzada. Luego aplíquelos a la muestra de test ***sat.tst*** y analice los resultados obtenidos.
 
-La base de datos contiene los valores multi-espectrales de píxeles en regiones de 3x3 en una imágen satelital, y la clasificación asociada con el píxel central de cada región. El objetivo es predecir esta clasificación dados los valores multi-espectrales. 
+-   
 
-- #### **Detalle**
+    #### **Propósito**
 
-Esta base de datos se generó a partir del ***escáner multi-espectral LANDSAT***. Un marco de imágenes Landsat MSS consta de ***cuatro imágenes*** digitales de la misma escena en ***diferentes bandas espectrales***. Dos de estos están en la región visible (correspondiente aproximadamente a las regiones verdes y rojas del espectro visible) y dos están en el infrarrojo. Cada ***píxel*** es una palabra binaria de 8 bits, con ***0*** correspondiente al negro y ***255*** a blanco. La resolución espacial de un píxel es de unos 80 m x 80m. Cada imagen contiene 2340 x 3380 de tales píxeles. 
+La base de datos contiene los valores multi-espectrales de píxeles en regiones de 3x3 en una imágen satelital, y la clasificación asociada con el píxel central de cada región. El objetivo es predecir esta clasificación dados los valores multi-espectrales.
+
+-   
+
+    #### **Detalle**
+
+Esta base de datos se generó a partir del ***escáner multi-espectral LANDSAT***. Un marco de imágenes Landsat MSS consta de ***cuatro imágenes*** digitales de la misma escena en ***diferentes bandas espectrales***. Dos de estos están en la región visible (correspondiente aproximadamente a las regiones verdes y rojas del espectro visible) y dos están en el infrarrojo. Cada ***píxel*** es una palabra binaria de 8 bits, con ***0*** correspondiente al negro y ***255*** a blanco. La resolución espacial de un píxel es de unos 80 m x 80m. Cada imagen contiene 2340 x 3380 de tales píxeles.
 
 La base de datos es una subárea (pequeña) de una escena, que consta de 82 x 100 píxeles. ***Cada fila del set de datos se corresponde a una región de píxeles cuadrados 3x3*** completamente contenida dentro de la subárea 82x100. Contiene los valoresen las cuatro bandas espectrales (convertidas en ASCII) para cada uno de los 9 píxeles en la región 3x3 y un número que indica la etiqueta de clasificación del píxel central.
 
 La ***clase*** de cada píxel se codifica como un número, siendo estos:
 
-- ***1:*** suelo rojo
-- ***2:*** cultivo de algodón
-- ***3:*** suelo gris
-- ***4:*** suelo gris húmdeo
-- ***5:*** suelo con rastrojo de vegetación 
-- ***6:*** mezcla de suelos
-- ***7:*** suelo gris muy húmedo  
+-   ***1:*** suelo rojo
 
-   -   **<font color='red'>N.B</font>**:
-No hay ejemplos con la clase 6 en este conjunto de datos (fueron removidos debido a dudas respecto a la validez de esta clase). Los datos se dan en orden aleatorio y se han eliminado ciertas líneas de datos para que no se pueda reconstruir la imagen original a partir de este conjunto de datos.
+-   ***2:*** cultivo de algodón
+
+-   ***3:*** suelo gris
+
+-   ***4:*** suelo gris húmdeo
+
+-   ***5:*** suelo con rastrojo de vegetación
+
+-   ***6:*** mezcla de suelos
+
+-   ***7:*** suelo gris muy húmedo
+
+    -   <font color='red'>N.B</font>: No hay ejemplos con la clase 6 en este conjunto de datos (fueron removidos debido a dudas respecto a la validez de esta clase). Los datos se dan en orden aleatorio y se han eliminado ciertas líneas de datos para que no se pueda reconstruir la imagen original a partir de este conjunto de datos.
 
 En cada línea de datos, ***los cuatro valores espectrales para el píxel superior izquierdo se dan primero***, seguidos por los cuatro valores espectrales para el píxel medio superior y luego los del píxel superior derecho, y así sucesivamente de modo que ***los píxeles se leen en secuencia de izquierda a derecha y de arriba a abajo***. Por lo tanto, los cuatro valores espectrales para los píxeles centrales están dados por los atributos 17,18,19 y 20. ***Si lo desea, puede usar solo estos cuatro atributos***, ignorando los demás.
 
-- ***DATOS TOTALES*** &rarr; set de entrenamiento: 4435 set de prueba: 2000
-- ***CANTIDAD DE ATRIBUTOS*** &rarr; 36 (4 bandas espectrales x 9 píxeles en una región)
-- ***ATRIBUTOS*** &rarr; numéricos en el rango {0,255}
-- ***CLASES*** &rarr; 6 en total: {1,2,3,4,5,7}
+-   ***DATOS TOTALES*** → set de entrenamiento: 4435 set de prueba: 2000
+-   ***CANTIDAD DE ATRIBUTOS*** → 36 (4 bandas espectrales x 9 píxeles en una región)
+-   ***ATRIBUTOS*** → numéricos en el rango {0,255}
+-   ***CLASES*** → 6 en total: {1,2,3,4,5,7}
 
+------------------------------------------------------------------------
 
-----
+# <font color=darkblue> Procedimiento </font>
 
-# **<font color=darkblue> Procedimiento </font>**
+------------------------------------------------------------------------
 
-----
+-   Empezamos tomando como válida la hipótesis del enunciado, la cual sugiere que el análisis puede conducirse tomando solo el píxel central. Extraemos los datos de entrenamiento y prueba para el píxel central a dos Data Frames: ***sat_trn_df*** y ***sat_tst_df*** respectivamente. Estos tendrán los valores para el píxel central en las cuatro bandas espectrales así como la clase correspondiente, resultando en Data Frames de 5 columnas en total.
 
+-   Realizamos un breve análisis de visualización de estos datos. Este nos permite comprender su estructura y distribución, así como estimar la similitud entre los datos de prueba y entrenamiento.
 
-- Empezamos tomando como válida la hipótesis del enunciado, la cual sugiere que el análisis puede conducirse tomando solo el píxel central. Extraemos los datos de entrenamiento y prueba para el píxel central a dos Data Frames: ***sat_trn_df*** y ***sat_tst_df*** respectivamente. Estos tendrán los valores para el píxel central en las cuatro bandas espectrales así como la clase correspondiente, resultando en Data Frames de 5 columnas en total.
+-   Construimos los distintos modelos aplicables a un problema de clasificación multi-clase. Puntualmente: ***Árbol de Decisión, Random Forest, Vecinos Más Cercanos, Regresión Logística Multinomial, Análisis Discriminante Lineal y Cuadrático***. Primero entrenamos estos modelos contra el set de entrenamiento y los evaluamos contra el mismo set de entrenamiento realizando Validación Cruzada con $K=10$. En la medida en que exista una alta similitud entre los datos de entrenamiento y prueba, es justo asumir que el error de clasificación estimado de esta forma será semejante al obtenido al evaluar los modelos contra el set de prueba.
 
-- Realizamos un breve análisis de visualización de estos datos. Este nos permite comprender su estructura y distribución, así como estimar la similitud entre los datos de prueba y entrenamiento.
+-   Para mantener el informe de una longitud razonable, y en base a análisis exploratorios sobre el dataset y lo visto en clase, se decidió no incluir en el mismo los modelos obtenidos mediante Boosting y Bagging, presentando únicamente Random Forest y Árboles de Decisión.
 
-- Constriumos los distintos modelos aplicables a un problema de clasificación multi-clase. Puntualmente: ***Árbol de Decisión, Random Forest, Vecinos Más Cercanos, Regresión Logística Multinomial, Análisis Discriminante Lineal y Cuadrático***. Primero entrenamos estos modelos contra el set de entrenamiento y luego los evaluamos contra el mismo set de entrenamiento realizando Validación Cruzada con $K=10$. En la medida en que exista una alta similitud entre los datos de entrenamiento y prueba, es justo asumir que el error de clasificación estimado de esta forma será semejante al obtenido al evaluar los modelos contra el set de prueba. 
+-   Evaluamos los modelos contra el set de prueba, derivando distintas métricas como el ***Error de Clasificación*** y ***Tablas de Confusión*** y realizamos un análisis comparativo de los modelos. También presentamos las ***Curvas ROC*** en formato ***One Vs. All***.
 
-- Evaluamos los modelos contra el set de prueba, derivando distintas métricas como el ***Error de Clasificación***, ***Tablas de Confusión*** y ***Curvas ROC*** y realizamos un análisis comparativo de los modelos.
+-   Por último, repetimos todo el análisis precedente ahora tomando en cuenta todos los píxeles a modo de corroborar la hipótesis del enunciado y derivamos observaciones y conclusiones generales de este análisis.
 
-- Por último, repetimos todo el análisis precedente ahora tomando en cuenta todos los píxeles a modo de corroborar la hipótesis del enunciado y derivamos observaciones y conclusiones generales de este análisis.
+------------------------------------------------------------------------
 
-----
+# <font color=darkblue> Obtención de los Datos </font>
 
-# **<font color=darkblue> Obtención de los Datos </font>**
-
-----
-
-<br>
+------------------------------------------------------------------------
 
 Dado que el enunciado menciona que pueden utilizarse solo los datos espectrales correspondientes al píxel central, buscamos extraerlos, junto con su clasificación, a una sola Data Frame.
 
-![](Explicacion_TP2_español.drawio.png)
-
+![](Explicacion_TP2_espa%C3%B1ol.drawio.png)
 
 ```{r}
 file_trn = "SAT_trn.txt"
@@ -235,13 +242,15 @@ sat_trn_df$C <- class_map[sat_trn_df$C]
 sat_tst_df$C <- class_map[sat_tst_df$C]
 ```
 
-----
+------------------------------------------------------------------------
 
-# **<font color=darkblue> Visualización de los Datos</font>**
+# <font color=darkblue> Visualización de los Datos</font>
 
-----
+------------------------------------------------------------------------
 
-- #### **Contenidos del Set de Datos**
+-   
+
+    #### **Contenidos del Set de Datos**
 
 <br>
 
@@ -249,11 +258,13 @@ sat_tst_df$C <- class_map[sat_tst_df$C]
 utils.DataFrame.print(sat_trn_df,10)
 ```
 
-- Podemos comprobar que tenemos valores acotados entre 0 y 255 para cuatro bandas espectrales y una categoría de suelo asignada en cada fila.
+-   Podemos comprobar que tenemos valores acotados entre 0 y 255 para cuatro bandas espectrales y una categoría de suelo asignada en cada fila.
 
 <br>
 
-- #### **Estructura y Distribución de los Datos**
+-   
+
+    #### **Estructura y Distribución de los Datos**
 
 <br>
 
@@ -303,13 +314,22 @@ vio_B4 <- ggplot(sat_trn_df, aes(x = C, y = B4, fill = C)) +
 grid.arrange(vio_B1,vio_B2,vio_B3,vio_B4, nrow =2, ncol = 2)
 ```
 
-- Observamos que los valores espectrales para los 3 tipos de suelo gris son similares en todas las bandas, por lo que es justo esperar un error de clasificación mayor entre estas tres clases. Conversamente, es justo esperar que el error de clasificación para el algodón y el suelo rojo sea considerablemente más bajo dados sus valores distintivos en las cuatro bandas.
+-   Observamos que los valores espectrales para los 3 tipos de suelo gris son similares en todas las bandas. Mientras tanto, el algodon es fácilmente distinguible, así como también los píxeles con vegetación o color rojo en menor medida, que parecieran agruparse por separado en el plano formado por las bandas B1 y B2 (variables V17 y V18)
+
+
+- En consecuencia, es justo esperar un error de clasificación mayor entre estas tres clases de grises. Conversamente, es justo esperar que el error de clasificación para el algodón y el suelo rojo sea considerablemente más bajo dados sus valores distintivos en las cuatro bandas.
+
+- Respecto a los espectros, las variables V17 y V18 son relativamente similares (R=0.8), relación que existe a su vez entre V19 y V20. Es probable entonces que un proceso de selección de variables lleve a mejores resultados a la hora de predecir, lo cual probaremos más adelante.
 
 <br>
 
-- #### **Comparación entre Set de Entrenamiento y Prueba**
+-   
+
+    #### **Comparación entre Set de Entrenamiento y Prueba**
 
 <br>
+
+Antes de empezar, queríamos asegurar también que las proporciones de cada clase y de las propiedades se mantuvieran relativamente uniformes entre el test de entrenamiento y de testeo, ya que sino la comparación entre los resultados se vería comprometida, dificultando el análisis.
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
 gpc_trn <- ggparcoord(sat_trn_df, columns = 1:4, groupColumn = "C", scale='globalminmax',title="Datos de Entrenamiento") + 
@@ -320,14 +340,15 @@ utils.color_theme() + xlab("Bandas") + ylab("Valores")
 grid.arrange(gpc_trn, gpc_tst, nrow = 2)
 ```
 
-- Cada linea representa una observación para las 4 bandas. La normalización de los valores no es necesaria ya que $B_1:B_4$ estan en la misma escala. Podemos ver que ***la distribución de suelo en los datos de entrenamiento y prueba es practicamente la misma***.
+-   Cada linea representa una observación para las 4 bandas. La normalización de los valores no es necesaria ya que $B_1:B_4$ estan en la misma escala. Podemos ver que ***la distribución de suelo en los datos de entrenamiento y prueba es prácticamente la misma***.
 
+- En consecuencia, no va a ser necesario tener cuidados especiales a la hora de entrenar o comparar los modelos en base a la muestra de testeo. Es decir, la performance en la clasificación de una clase en particular no va a cambiar significativamente el resultado global de la precisión o error, ya que su proporción en la muestra se mantiene uniforme en ambos sets y los valores asociados a cada clase también son estables.
 
-----
+------------------------------------------------------------------------
 
-# **<font color=darkblue>Construcción de Modelos</font>**
+# <font color=darkblue>Construcción de Modelos</font>
 
-----
+------------------------------------------------------------------------
 
 ```{r, echo=FALSE}
 sat_trn_df <- data.frame(sat_trn_df_numeric)
@@ -337,7 +358,11 @@ sat_tst_df$C <- as.factor(sat_tst_df$C)
 set.seed(20)
 ```
 
-### **<font color=darkblue> Árbol de Decisión </font>**
+### <font color=darkblue> Árbol de Decisión </font>
+
+Empezamos con el uso de un árbol de decisión como primer modelo, utilizando la librería ***rpart*** en incluyendo las 4 bandas asociadas al pixel central. El árbol fue podado de forma tal de minimizar el error de clasificación estimado por Validación Cruzada con K=10.
+
+Como comentario, para todos los modelos se utilizó un valor semilla fijo para obtener los mismos resultados en las distintas corridas, y asegurar que los datos de validación cruzada surgen de los mismos datos entre los modelos.
 
 ```{r}
 set.seed(20)
@@ -356,7 +381,9 @@ poda_rpart<-prune(sat_rpart,cp=cp)
 rpart.plot(poda_rpart, cex = 0.5, extra = 0)
 ```
 
-### **<font color=darkblue> Random Forest </font>**
+### <font color=darkblue> Random Forest </font>
+
+La continuación del caso anterior dicho de alguna manera, el siguiente modelo fue ***Random Forest***, un conjunto de árboles. Más adelante se verá el uso de este modelo con todas las covariables, donde su capacidad para reconocer las variables más importantes va a ser más significativo (al tener 36 variables en vez de 4)
 
 ```{r}
 set.seed(20)
@@ -369,8 +396,13 @@ CVErr_rf <- unname(sat_rf$err.rate[nrow(sat_rf$err.rate),1])
 CVErr_rf
 ```
 
-### **<font color=darkblue> Vecinos Más Cercanos </font>**
+Más allá de eso, pareciera notarse una preferencia por las variables V17 V18 y V20 en los ranking de importancia.
 
+### <font color=darkblue> Vecinos Más Cercanos </font>
+
+El siguiente modelo a evaluar es el de Vecinos Más Cercanos. En un primer momento se decidio analizar este modelo únicamente con los datos del pixel central debido a preocupaciones respecto a la maldición de la dimensionalidad. Sin embargo, más adelante veremos su performance con el dataset completo también.
+
+El principal valor a ajustar es la cantidad de vecinos a considerar para la clasificación, el cual fue obtenido de forma tal de maximizar la precisión estimada a partir de Validación Cruzada (K=10).
 
 ```{r}
 set.seed(20)
@@ -399,7 +431,11 @@ best_k <- results$k[which.max(results$Accuracy)]
 CVErr_KNN <- 1-unname(sat_knn$results[best_k,"Accuracy"])
 ```
 
-### **<font color=darkblue> Regresión Logística Multinomial </font>**
+Del gráfico de arriba se ve una rápida mejora en los resultados a partir de K=11, con el máximo obtenido para K=45.
+
+### <font color=darkblue> Regresión Logística Multinomial </font>
+
+Siguiendo con otra familia de modelos completamente difrente, se procedió a utilizar un Regresión Logística Multinomial. Durante el curso sólo utilizamos la regresión logística para el caso binario, pero nos pareció interesante incluirla en este trabajo.
 
 ```{r,results = FALSE,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
 sat_trn_df$C <- factor(sat_trn_df$C)
@@ -410,14 +446,15 @@ sat_mlr <- train(C ~ .,
                trControl = trainControl(method = "cv", number = 10))
 ```
 
-
 ```{r}
 summary(sat_mlr)
 predicted_mlr <- predict(sat_mlr, newdata = sat_trn_df)
 CVErr_mlr <- mean(predicted_mlr != sat_trn_df$C)
 ```
 
-### **<font color=darkblue> Análisis Discriminante Lineal</font>**
+### <font color=darkblue> Análisis Discriminante Lineal</font>
+
+Luego, seguimos con un análisis discrimante lineal (LDA). Decidimos realizar un análisis de Best Subset para definir las mejores variables a incluir en el modelo (entre aquellas del pixel central).
 
 ```{r}
 set.seed(20)
@@ -426,8 +463,13 @@ sat_LDA
 CVErr_LDA <- 1-unname(sat_LDA$result.pm["crossval.rate"])
 ```
 
-### **<font color=darkblue> Análisis Discriminante Cuadrático</font>**
+De los resultados se ve que la mejor performance se obtuvo cuando se eliminó la variable B4 (V20), incluyendo únicamente B1-B3 (V17-V19). Las dos primeras variables coinciden con aquellas con mayor importancia acorde con el modelo de Random Forest, aunque la última se ve invertida.
 
+### <font color=darkblue> Análisis Discriminante Cuadrático</font>
+
+Del mismo modo, se evaluó también el Análisis Discriminante Cuadrático, con el cual se espera obtener ligeramente mejores resultados que el caso anterior dada las características del dataset y la cantidad de datos disponibles.
+
+Nuevamente se procedió con el método Best Subset para seleccionar las variables a incluir en el modelo.
 
 ```{r}
 set.seed(20)
@@ -436,12 +478,14 @@ sat_QDA
 CVErr_QDA <- 1-unname(sat_QDA$result.pm["crossval.rate"])
 ```
 
+En este caso también se encontró que utilizar 3 variables era el óptimo, pero las variables elegidas (B1, B2, B4) coinciden con las reconocidas como más importantes según Random Forest.
 
-### **<font color=darkblue> Comparación del Error de 10-fold CV</font>**
+### <font color=darkblue> Comparación del Error de 10-fold CV</font>
 
+Habiendo construido todos los modelos, a continuación se presentan todos los errores estimados por validación cruzada.
 
 ```{r}
-models <- c("rpart", "RF", "KNN", "RLM","LDA","QDA")
+models <- c("AD", "RF", "KNN", "RLM","ADL","ADC")
 CVErrs <- c(CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr,CVErr_LDA,CVErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
@@ -454,22 +498,32 @@ CVErr_plot
 
 ```
 
-----
+Se puede ver que no existe realmente mucha diferencia entre los modelos. Todos tienen una performance similar, con un 15% de error de clasifcación a nivel global aproximadamente. Los mejores resultados se obtuvieron utilizando Vecinos Más Cercanos, aunque la diferencia (absoluta) con sus competidores es menor al 1% en precisión.
 
-# **<font color=darkblue>Evaluación de los Modelos contra el Set de Entrenamiento</font>**
+------------------------------------------------------------------------
 
-----
+# <font color=darkblue>Evaluación de los Modelos contra el Set de Testeo</font>
 
-### **<font color=darkblue>Árbol de Decisión</font>**
+------------------------------------------------------------------------
 
-```{r,echo=FALSE,warning=FALSE,message=FALSE}
+A continuación, se muestran la tablas de confusión y la precisión de los modelos al utilizar el Set de Testeo. Se esperaría que los resultados sean comparables con aquellos obtenidos por validación cruzada, tal vez con algo menor de precisión ya que los datos nunca fueron utilizados en la construcción del modelo.
+
+Se incluyen también las Gráficas ROC en formato One Vs. All, las cuales permiten evaluar qué tan separables son las clases en nuestros modelos. También podrían utilizarse para ajustar la metodología de clasificación si alguna misclasición se considerase más importante que otra. Para este trabajo se asumió que, dada la proporción de cada clase en la muestra y el tipo de problema (clasificación de suelo), no era importante optimizar los límites para elegir una clase por sobre otra. Nuestra única variable de interés era el error de clasificación a nivel global.
+
+En nuestro caso, se puede ver que los Valores de AUC son muy altos (mayores a 0.99), lo que implica que los modelos hacen un buen trabajo separando la clases de suelo. En general se puede vaer que la curva celeste (gris húmedo) es la que menor área bajo la curva tiene, lo que era esperable por su similitud con los otros grises.
+
+Ese mismo resultado puede verse en la matrices de confusión. Todas la matrices son análogas entre sí, con una muy buena performance para la mayoría de las clases pero con valores llamativamente bajos (no supera el 60% en el mejor de los casos) para el suelo gris húmedo, el cual es confundido la mayoría de las veces por suelo gris o suelo gris muy húmedo, lo cual es lógico.
+
+### <font color=darkblue>Árbol de Decisión</font>
+
+```{r,warning=FALSE,message=FALSE}
 sat_rpart_pred <- predict(sat_rpart,sat_tst_df,type="class")
 utils.conf_matrix(sat_tst_df,sat_rpart_pred)
 utils.OVAROC(sat_tst_df,sat_rpart)
 CLErr_rpart <- mean(sat_rpart_pred != sat_tst_df$C)
 ```
 
-### **<font color=darkblue>Random Forest</font>**
+### <font color=darkblue>Random Forest</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rf_pred <- predict(sat_rf,sat_tst_df,type="class")
@@ -478,7 +532,7 @@ utils.OVAROC(sat_tst_df,sat_rf)
 CLErr_rf <- mean(sat_rf_pred != sat_tst_df$C)
 ```
 
-### **<font color=darkblue>Regresión Logística Multinomial</font>**
+### <font color=darkblue>Regresión Logística Multinomial</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_mlr_pred <- predict(sat_mlr,sat_tst_df)
@@ -487,7 +541,7 @@ utils.OVAROC(sat_tst_df,sat_mlr)
 CLErr_mlr <- mean(sat_mlr_pred != sat_tst_df$C)
 ```
 
-### **<font color=darkblue>Vecinos Más Cercanos</font>**
+### <font color=darkblue>Vecinos Más Cercanos</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_knn_pred <- predict(sat_knn,sat_tst_df)
@@ -496,7 +550,7 @@ utils.OVAROC(sat_tst_df,sat_knn)
 CLErr_knn <- mean(sat_knn_pred != sat_tst_df$C)
 ```
 
-### **<font color=darkblue>Análisis Discriminante Lineal</font>**
+### <font color=darkblue>Análisis Discriminante Lineal</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_LDA_pred <- predict(train(sat_LDA$formula, data= sat_trn_df, method="lda", trControl = trainControl(method = "cv")),sat_tst_df)
@@ -505,7 +559,7 @@ utils.OVAROC(sat_tst_df,train(sat_LDA$formula, data= sat_trn_df, method="lda", t
 CLErr_LDA <- mean(sat_LDA_pred != sat_tst_df$C)
 ```
 
-### **<font color=darkblue>Análisis Discriminante Cuadrático</font>**
+### <font color=darkblue>Análisis Discriminante Cuadrático</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_QDA_pred <- predict(train(sat_QDA$formula, data= sat_trn_df, method="qda", trControl = trainControl(method = "cv")),sat_tst_df)
@@ -514,11 +568,14 @@ utils.OVAROC(sat_tst_df,train(sat_QDA$formula, data= sat_trn_df, method="lda", t
 CLErr_QDA <- mean(sat_QDA_pred != sat_tst_df$C)
 ```
 
-### **<font color=darkblue> Comparación del Error de Clasificación de los Modelos</font>**
+### <font color=darkblue> Comparación del Error de Clasificación de los Modelos</font>
 
+En el gráfico abajo se puede ver la comparación de los errores de clasificación de todos los modelos. Los resultados fueron los esperados, manteniéndose las tendencias vistas en base a los errores estimados por validación cruzada, aunque ligeramente mayores.
+
+Nuevamente, la performance entre los modelos fue similar entre ellos, con KNN proveyendo las mejores predicciones.
 
 ```{r}
-models <- c("rpart", "RF", "KNN", "RLM","LDA","QDA")
+models <- c("AD", "RF", "KNN", "RLM","ADL","ADC")
 CVErrs <- c(CLErr_rpart,CLErr_rf,CLErr_knn,CLErr_mlr,CLErr_LDA,CLErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
@@ -530,13 +587,17 @@ CErr_plot <-  ggplot(CVErr_df, aes(x = Label, y = Value)) +
 CErr_plot
 ```
 
-----
+------------------------------------------------------------------------
 
-## **<font color=darkblue> Análisis Para el Set de Datos Completo </font>**
+## <font color=darkblue> Análisis Para el Set de Datos Completo </font>
 
-----
+------------------------------------------------------------------------
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Para comprobar (o rechazar) la idea de que la clasificación del pixel central puede obtenerse únicamente con los datos del propio pixel únicamente, se decidió repetir el proceso incluyendo la variables asociadas a los píxeles contiguos. Es probable que información del entorno permita a los modelos clasificar al pixel central mejor en casos más ambiguos.
+
+A continuación, entonces, repetimos el análisis anterior, con los comentarios perinentes cuando haya alguna diferencia en el procedimiento o los resultados.
+
+```{r,warning=FALSE,message=FALSE}
 
 sat_trn_full_df <- data_trn %>% rename(C=V37)
 sat_tst_full_df <- data_tst %>% rename(C=V37)
@@ -546,18 +607,16 @@ sat_trn_full_df$C <- as.factor(sat_trn_full_df$C)
 sat_tst_full_df$C <- as.factor(sat_tst_full_df$C)
 ```
 
+### <font color=darkblue> Árbol de Decisión </font>
 
-### **<font color=darkblue> Árbol de Decisión </font>**
-
-
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
+```{r,warning=FALSE,message=FALSE}
 set.seed(20)
 # Entrenamiento del Modelo con 10-fold CV  
 sat_rpart <-  rpart(C ~ ., data= sat_trn_full_df, method = "class", cp=-1,xval=10)
 sat_rpart_summary <- printcp(sat_rpart)
 ```
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
+```{r,warning=FALSE,message=FALSE}
 plotcp(sat_rpart) 
 which.min(sat_rpart$cptable[,4])
 cp<-sat_rpart$cptable[which.min(sat_rpart$cptable[,"xerror"]),"CP"]
@@ -566,8 +625,9 @@ poda_rpart<-prune(sat_rpart,cp=cp)
 rpart.plot(poda_rpart, cex = 0.5, extra = 0)
 ```
 
+En el resultado final que se peude ver arriba, se puede ver que el arbol de decisión obtenido mediante poda incluye numerosas variables fuera del pixel central, aunque aquellas del pixel central (V17-V20) tienden a "abrir el árbol". Es decir, el modelo comienza la distinción con los datos del pixel central, y realiza las clasificaciones finales utilizando información "extra" de los píxeles contiguos.
 
-### **<font color=darkblue> Random Forest </font>**
+### <font color=darkblue> Random Forest </font>
 
 ```{r, echo=FALSE,warning=FALSE,message=FALSE}
 set.seed(20)
@@ -579,8 +639,17 @@ varImpPlot(sat_rf)
 CVErr_rf <- unname(sat_rf$err.rate[nrow(sat_rf$err.rate),1])
 ```
 
-### **<font color=darkblue> Vecinos Más Cercanos </font>**
+La importancia de incluir todas las variables, y cuáles son de interés, es mas notorio en el modelo de Random Forest. Más adelante veremos el cambio en performance, pero más destacable en este momento es el gráfico de importancia de variables. 
 
+Viendo las gráficas se puede notar que, si bien el pixel central es determinante (V17, V18, V20, las mismas destacadas en los modelos anteriores y elegidas para QDA según Best Subset), otras variables juegan un rol importante en el modelo (V21, V22, V16).
+
+Más adelante veremos que esto llevó a una reducción considerable en el error de clasificación.
+
+### <font color=darkblue> Vecinos Más Cercanos </font>
+
+Siguiendo con KNN, en este caso se notó que el número de vecinos a incluir para maximizar la precisión se redujo considerablemente. Se puede ver un pico claro en 9 vecinos, mientras que antes se notaba una performance similar para un gran número de posibles valores de k.
+
+Más adelante se verá también que KNN fue uno de los grandes beneficiarios de incluir más variables. Es probable que técnicas más eficientes de selección o reducción de variables puedan mejorar aún más su performance.
 
 ```{r, echo=FALSE,warning=FALSE,message=FALSE}
 set.seed(20)
@@ -609,8 +678,7 @@ best_k <- results$k[which.max(results$Accuracy)]
 CVErr_KNN <- 1-unname(sat_knn$results[best_k,"Accuracy"])
 ```
 
-
-### **<font color=darkblue> Regresión Logística Multinomial </font>**
+### <font color=darkblue> Regresión Logística Multinomial </font>
 
 ```{r,results = FALSE,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
 sat_mlr <- train(C ~ ., 
@@ -619,14 +687,17 @@ sat_mlr <- train(C ~ .,
                trControl = trainControl(method = "cv", number = 10))
 ```
 
-
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 summary(sat_mlr)
 predicted_mlr <- predict(sat_mlr, newdata = sat_trn_full_df)
 CVErr_mlr <- mean(predicted_mlr != sat_trn_full_df$C)
 ```
 
-### **<font color=darkblue> Análisis Discriminante Lineal</font>**
+### <font color=darkblue> Análisis Discriminante Lineal</font>
+
+Tanto para QDA como LDA, se repitió el análisis mediante Best Subset. Inicialmente se trabajo con un Forward Stepwise para acelerar el proceso, pero luego se vio que el costo de utilizar Best Subset no era imposible en términos de tiempo.
+
+Más allá de eso, los resultados obtenidos en este caso particular fueron idénticos entre ambos análisis. Para el caso de LDA, el mejor modelo se obtuvo incluyendo 3 variables: V17, V18 y V15. La última de estas variables esta fuera del pixel central, mientras que las dos primeras son aquellas que consistentemente fueron identificadas como las más importantes por todos los modelos.
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 set.seed(20)
@@ -635,8 +706,9 @@ sat_LDA
 CVErr_LDA <- 1-unname(sat_LDA$result.pm["crossval.rate"])
 ```
 
-### **<font color=darkblue> Análisis Discriminante Cuadrático</font>**
+### <font color=darkblue> Análisis Discriminante Cuadrático</font>
 
+El proceso se repitió para QDA. Lo interesante aquí es que se obtuvo exactamente el mismo modelo de antes! Con V17, V18 y V20. Los resultados son consistentes con el ranking de importancia de Random Forest, así como con los análisis realizadas en la sección anterior.
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 set.seed(20)
@@ -645,12 +717,10 @@ sat_QDA
 CVErr_QDA <- 1-unname(sat_QDA$result.pm["crossval.rate"])
 ```
 
-
-### **<font color=darkblue> Comparación del Error de 10-fold CV</font>**
-
+### <font color=darkblue> Comparación del Error de 10-fold CV</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
-models <- c("rpart", "RF", "KNN", "RLM","LDA","QDA")
+models <- c("AD", "RF", "KNN", "RLM","ADL","ADC")
 CVErrs <- c(CVErr_rpart,CVErr_rf,CVErr_KNN,CVErr_mlr,CVErr_LDA,CVErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
@@ -662,13 +732,23 @@ CVErr_plot_full <- ggplot(CVErr_df, aes(x = Label, y = Value)) +
 CVErr_plot_full
 ```
 
-----
+Comparando la estimación de los errores obtenidos por validación cruzada, se destacan dos tendencias muy marcadas.
 
-## **<font color=darkblue>Evaluación de los Modelos contra el Set de Entrenamiento</font>**
+En general, los modelos de pocas variables (QDA, LDA, Regresión Logística) no vieron mejoras considerables en los resultados. Es más se mantienen en el orden de 15% de error. Esto era esperable, especialmente para QDA ya que "el mejor modelo" resultó ser el mismo independientemente del pool de variables con el que se empezó el Best Subset.
 
-----
+Lo que sí es notable es la enorme mejora de los resultados obtenidos mediante Vecinos Más Cercanos y Random Forest, los cuales redujeron a aproximadamente la mitad el error. Random Forest en particular, parece hacer un gran trabajo en reconocer internamente las variables más influyentes y fue un gran benefeciario de incluir todas las variables en su análisis.
 
-### **<font color=darkblue>Árbol de Decisión</font>**
+------------------------------------------------------------------------
+
+## <font color=darkblue>Evaluación de los Modelos contra el Set de Testeo</font>
+
+------------------------------------------------------------------------
+
+Abajo se pueden ver las matrices de confusión para cada uno de los modelos. Si se mira detenidamente los resultados para KNN y Random Forest, lo más notable en comparación con los resultados anteriores es la gran mejora en la precisión para clasificar el suelo gris húmedo. Ese gran aumento de precisión en la clase más dificil (pasando, por ejemplo, de 39% a 57% en Random Forest) es una de las grandes razones de la mejora en precisión. Similares resultados se pueden ver en el caso de Vecinos Más Cercanos, y para el error en la clasificación de suelos con vegetación (con menores cambios, pero aún significativos).
+
+Mientras tanto, el resto de los modelos mantuvo básicamente la misma performance en todas las clases, y no se vieron beneficiadas por la mayor información proporcionada por los píxeles contiguos.
+
+### <font color=darkblue>Árbol de Decisión</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rpart_pred <- predict(sat_rpart,sat_tst_full_df,type="class")
@@ -677,7 +757,7 @@ utils.OVAROC(sat_tst_full_df,sat_rpart)
 CLErr_rpart <- mean(sat_rpart_pred != sat_tst_full_df$C)
 ```
 
-### **<font color=darkblue>Random Forest</font>**
+### <font color=darkblue>Random Forest</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rf_pred <- predict(sat_rf,sat_tst_full_df,type="class")
@@ -686,7 +766,7 @@ utils.OVAROC(sat_tst_full_df,sat_rf)
 CLErr_rf <- mean(sat_rf_pred != sat_tst_full_df$C)
 ```
 
-### **<font color=darkblue>Regresión Logística Multinomial</font>**
+### <font color=darkblue>Regresión Logística Multinomial</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_mlr_pred <- predict(sat_mlr,sat_tst_full_df)
@@ -695,7 +775,7 @@ utils.OVAROC(sat_tst_full_df,sat_mlr)
 CLErr_mlr <- mean(sat_mlr_pred != sat_tst_full_df$C)
 ```
 
-### **<font color=darkblue>Vecinos Más Cercanos</font>**
+### <font color=darkblue>Vecinos Más Cercanos</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_knn_pred <- predict(sat_knn,sat_tst_full_df)
@@ -704,7 +784,7 @@ utils.OVAROC(sat_tst_full_df,sat_knn)
 CLErr_knn <- mean(sat_knn_pred != sat_tst_full_df$C)
 ```
 
-### **<font color=darkblue>Análisis Discriminante Lineal</font>**
+### <font color=darkblue>Análisis Discriminante Lineal</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_LDA_pred <- predict(train(sat_LDA$formula, data= sat_trn_full_df, method="lda", trControl = trainControl(method = "cv")),sat_tst_full_df)
@@ -713,7 +793,7 @@ utils.OVAROC(sat_tst_full_df,train(sat_LDA$formula, data= sat_trn_full_df, metho
 CLErr_LDA <- mean(sat_LDA_pred != sat_tst_full_df$C)
 ```
 
-### **<font color=darkblue>Análisis Discriminante Cuadrático</font>**
+### <font color=darkblue>Análisis Discriminante Cuadrático</font>
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_QDA_pred <- predict(train(sat_QDA$formula, data= sat_trn_full_df, method="qda", trControl = trainControl(method = "cv")),sat_tst_full_df)
@@ -722,11 +802,10 @@ utils.OVAROC(sat_tst_full_df,train(sat_QDA$formula, data= sat_trn_full_df, metho
 CLErr_QDA <- mean(sat_QDA_pred != sat_tst_full_df$C)
 ```
 
-### **<font color=darkblue> Comparación del Error de Clasificación de los Modelos</font>**
-
+### <font color=darkblue> Comparación del Error de Clasificación de los Modelos</font>
 
 ```{r}
-models <- c("rpart", "RF", "KNN", "RLM","LDA","QDA")
+models <- c("AD", "RF", "KNN", "RLM","ADL","ADC")
 CVErrs <- c(CLErr_rpart,CLErr_rf,CLErr_knn,CLErr_mlr,CLErr_LDA,CLErr_QDA)
 
 CVErr_df <- data.frame(Label = models, Value = CVErrs)
@@ -738,13 +817,17 @@ CErr_plot_full <- ggplot(CVErr_df, aes(x = Label, y = Value)) +
 CErr_plot_full
 ```
 
-----
+En el resumen de arriba se ve claramente como la performance de KNN y Random Forest es ampliamente superior para este dataset, con errores de aproximadamente 9% (contra 15% del resto de los modelos). A su vez, los resultados son similares a aquellos estimados por validación cruzada.
 
-## **<font color=darkblue> Observaciones y Conclusiones Generales </font>**
+El mejor modelo resulto ser el de Random Forest.
 
-----
+------------------------------------------------------------------------
 
-- Comparando el Error de Clasificación de los modelos considerando unicamente el pixel central y considerando todo el set de datos, concluímos que ***la hipótesis del enunciado no es válida***, ya que se obtiene una reducción considerable en el error de clasificación al considerar todos los datos, así como una mayor variabilidad entre modelos.
+## <font color=darkblue> Observaciones y Conclusiones Generales </font>
+
+------------------------------------------------------------------------
+
+-   Comparando el Error de Clasificación de los modelos considerando unicamente el pixel central y considerando todo el set de datos, concluímos que ***la hipótesis del enunciado no es válida***, ya que se obtiene una reducción considerable en el error de clasificación al considerar todos los datos, así como una mayor variabilidad entre modelos.
 
 ```{r}
 
@@ -760,10 +843,11 @@ grid.arrange(CVErr_plot,
             ncol = 2)
 ```
 
-- Considerando todos los datos, el mejor resultado se obtiene para ***Random Forest*** con un error de clasificación de aproximadamente el 8%, seguido de ***KNN*** con un error de clasificación de aproximadamente el 9%.
+-   Considerando todos los datos, el mejor resultado se obtiene para ***Random Forest*** con un error de clasificación de aproximadamente el 8%, seguido de ***KNN*** con un error de clasificación de aproximadamente el 9%.
 
-<center>
+- La mayor parte del error de clasificación viene dad por la dificultad de los modelos de distinguir la clase ***gris húmedo** de las otras categorías de grises, dato que se ve sustentado tanto análizando las matrices de confusión como las Curvas ROC One Vs. All.
 
-## **< <font color=darkorange> COMPLETAR</font> >** 
+- Incluir los datos de píxeles aledaños ofereció una fuerte mejora de los resultados para KNN y Random Forest, el cual se explica principalmente por la mejora en la capacidad de distinguir la clase ***gris húmedo**, de 39% a 57% por ejemplo para Random Forest. En menor medida, la mejora en la clasificación de Vegetación también fue un factor importante.
 
-</center>
+- Visto todo lo anterior, se selecciona como modelo el modelo de Random Forest incluyendo toda la información disponible para su construcción y evaluación.
+
