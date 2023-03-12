@@ -1,9 +1,12 @@
 ---
 title: "TP Integrador - Aprendizaje Estadístico"
 author: "Santiago Bertero - Lautaro De Lucia"
+date: 12-3-2023
 output: 
   html_document: 
     highlight: espresso
+    toc: true
+    toc_float: true
 ---
 
 ![](satellite.png)
@@ -502,7 +505,7 @@ Se puede ver que no existe realmente mucha diferencia entre los modelos. Todos t
 
 ------------------------------------------------------------------------
 
-# <font color=darkblue>Evaluación de los Modelos contra el Set de Testeo</font>
+## <font color=darkblue>Evaluación de los Modelos contra el Set de Testeo</font>
 
 ------------------------------------------------------------------------
 
@@ -587,9 +590,10 @@ CErr_plot <-  ggplot(CVErr_df, aes(x = Label, y = Value)) +
 CErr_plot
 ```
 
+
 ------------------------------------------------------------------------
 
-## <font color=darkblue> Análisis Para el Set de Datos Completo </font>
+# <font color=darkblue> Análisis Para el Set de Datos Completo </font>
 
 ------------------------------------------------------------------------
 
@@ -823,7 +827,7 @@ El mejor modelo resulto ser el de Random Forest.
 
 ------------------------------------------------------------------------
 
-## <font color=darkblue> Observaciones y Conclusiones Generales </font>
+# <font color=darkblue> Observaciones y Conclusiones Generales </font>
 
 ------------------------------------------------------------------------
 
