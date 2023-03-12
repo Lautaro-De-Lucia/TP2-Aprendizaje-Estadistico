@@ -2,11 +2,7 @@
 title: "TP Integrador - Aprendizaje Estadístico"
 author: "Santiago Bertero - Lautaro De Lucia"
 date: 12-3-2023
-output: 
-  html_document: 
-    highlight: espresso
-    toc: true
-    toc_float: true
+output: rmdformats::readthedown
 ---
 
 ![](satellite.png)
@@ -135,7 +131,7 @@ legend("bottomright", legend = class_names, col = rainbow(length(roc_list)), lty
 
 ------------------------------------------------------------------------
 
-# <font color=darkblue> Enunciado </font>
+# Enunciado
 
 ------------------------------------------------------------------------
 
@@ -186,7 +182,7 @@ En cada línea de datos, ***los cuatro valores espectrales para el píxel superi
 
 ------------------------------------------------------------------------
 
-# <font color=darkblue> Procedimiento </font>
+# Procedimiento
 
 ------------------------------------------------------------------------
 
@@ -204,7 +200,7 @@ En cada línea de datos, ***los cuatro valores espectrales para el píxel superi
 
 ------------------------------------------------------------------------
 
-# <font color=darkblue> Obtención de los Datos </font>
+# Obtención de los Datos
 
 ------------------------------------------------------------------------
 
@@ -247,7 +243,7 @@ sat_tst_df$C <- class_map[sat_tst_df$C]
 
 ------------------------------------------------------------------------
 
-# <font color=darkblue> Visualización de los Datos</font>
+# Visualización de los Datos
 
 ------------------------------------------------------------------------
 
@@ -349,7 +345,7 @@ grid.arrange(gpc_trn, gpc_tst, nrow = 2)
 
 ------------------------------------------------------------------------
 
-# <font color=darkblue>Construcción de Modelos</font>
+# Construcción de Modelos
 
 ------------------------------------------------------------------------
 
@@ -361,7 +357,7 @@ sat_tst_df$C <- as.factor(sat_tst_df$C)
 set.seed(20)
 ```
 
-### <font color=darkblue> Árbol de Decisión </font>
+### Árbol de Decisión
 
 Empezamos con el uso de un árbol de decisión como primer modelo, utilizando la librería ***rpart*** en incluyendo las 4 bandas asociadas al pixel central. El árbol fue podado de forma tal de minimizar el error de clasificación estimado por Validación Cruzada con K=10.
 
@@ -384,7 +380,7 @@ poda_rpart<-prune(sat_rpart,cp=cp)
 rpart.plot(poda_rpart, cex = 0.5, extra = 0)
 ```
 
-### <font color=darkblue> Random Forest </font>
+### Random Forest
 
 La continuación del caso anterior dicho de alguna manera, el siguiente modelo fue ***Random Forest***, un conjunto de árboles. Más adelante se verá el uso de este modelo con todas las covariables, donde su capacidad para reconocer las variables más importantes va a ser más significativo (al tener 36 variables en vez de 4)
 
@@ -401,7 +397,7 @@ CVErr_rf
 
 Más allá de eso, pareciera notarse una preferencia por las variables V17 V18 y V20 en los ranking de importancia.
 
-### <font color=darkblue> Vecinos Más Cercanos </font>
+### Vecinos Más Cercanos
 
 El siguiente modelo a evaluar es el de Vecinos Más Cercanos. En un primer momento se decidio analizar este modelo únicamente con los datos del pixel central debido a preocupaciones respecto a la maldición de la dimensionalidad. Sin embargo, más adelante veremos su performance con el dataset completo también.
 
@@ -436,7 +432,7 @@ CVErr_KNN <- 1-unname(sat_knn$results[best_k,"Accuracy"])
 
 Del gráfico de arriba se ve una rápida mejora en los resultados a partir de K=11, con el máximo obtenido para K=45.
 
-### <font color=darkblue> Regresión Logística Multinomial </font>
+### Regresión Logística Multinomial
 
 Siguiendo con otra familia de modelos completamente difrente, se procedió a utilizar un Regresión Logística Multinomial. Durante el curso sólo utilizamos la regresión logística para el caso binario, pero nos pareció interesante incluirla en este trabajo.
 
@@ -455,7 +451,7 @@ predicted_mlr <- predict(sat_mlr, newdata = sat_trn_df)
 CVErr_mlr <- mean(predicted_mlr != sat_trn_df$C)
 ```
 
-### <font color=darkblue> Análisis Discriminante Lineal</font>
+### Análisis Discriminante Lineal
 
 Luego, seguimos con un análisis discrimante lineal (LDA). Decidimos realizar un análisis de Best Subset para definir las mejores variables a incluir en el modelo (entre aquellas del pixel central).
 
@@ -468,7 +464,7 @@ CVErr_LDA <- 1-unname(sat_LDA$result.pm["crossval.rate"])
 
 De los resultados se ve que la mejor performance se obtuvo cuando se eliminó la variable B4 (V20), incluyendo únicamente B1-B3 (V17-V19). Las dos primeras variables coinciden con aquellas con mayor importancia acorde con el modelo de Random Forest, aunque la última se ve invertida.
 
-### <font color=darkblue> Análisis Discriminante Cuadrático</font>
+### Análisis Discriminante Cuadrático
 
 Del mismo modo, se evaluó también el Análisis Discriminante Cuadrático, con el cual se espera obtener ligeramente mejores resultados que el caso anterior dada las características del dataset y la cantidad de datos disponibles.
 
@@ -483,7 +479,7 @@ CVErr_QDA <- 1-unname(sat_QDA$result.pm["crossval.rate"])
 
 En este caso también se encontró que utilizar 3 variables era el óptimo, pero las variables elegidas (B1, B2, B4) coinciden con las reconocidas como más importantes según Random Forest.
 
-### <font color=darkblue> Comparación del Error de 10-fold CV</font>
+### Comparación del Error de 10-fold CV
 
 Habiendo construido todos los modelos, a continuación se presentan todos los errores estimados por validación cruzada.
 
@@ -505,7 +501,7 @@ Se puede ver que no existe realmente mucha diferencia entre los modelos. Todos t
 
 ------------------------------------------------------------------------
 
-## <font color=darkblue>Evaluación de los Modelos contra el Set de Testeo</font>
+## Evaluación de los Modelos contra el Set de Testeo
 
 ------------------------------------------------------------------------
 
@@ -517,7 +513,7 @@ En nuestro caso, se puede ver que los Valores de AUC son muy altos (mayores a 0.
 
 Ese mismo resultado puede verse en la matrices de confusión. Todas la matrices son análogas entre sí, con una muy buena performance para la mayoría de las clases pero con valores llamativamente bajos (no supera el 60% en el mejor de los casos) para el suelo gris húmedo, el cual es confundido la mayoría de las veces por suelo gris o suelo gris muy húmedo, lo cual es lógico.
 
-### <font color=darkblue>Árbol de Decisión</font>
+### Árbol de Decisión
 
 ```{r,warning=FALSE,message=FALSE}
 sat_rpart_pred <- predict(sat_rpart,sat_tst_df,type="class")
@@ -526,7 +522,7 @@ utils.OVAROC(sat_tst_df,sat_rpart)
 CLErr_rpart <- mean(sat_rpart_pred != sat_tst_df$C)
 ```
 
-### <font color=darkblue>Random Forest</font>
+### Random Forest
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rf_pred <- predict(sat_rf,sat_tst_df,type="class")
@@ -535,7 +531,7 @@ utils.OVAROC(sat_tst_df,sat_rf)
 CLErr_rf <- mean(sat_rf_pred != sat_tst_df$C)
 ```
 
-### <font color=darkblue>Regresión Logística Multinomial</font>
+### Regresión Logística Multinomial
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_mlr_pred <- predict(sat_mlr,sat_tst_df)
@@ -544,7 +540,7 @@ utils.OVAROC(sat_tst_df,sat_mlr)
 CLErr_mlr <- mean(sat_mlr_pred != sat_tst_df$C)
 ```
 
-### <font color=darkblue>Vecinos Más Cercanos</font>
+### Vecinos Más Cercanos
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_knn_pred <- predict(sat_knn,sat_tst_df)
@@ -553,7 +549,7 @@ utils.OVAROC(sat_tst_df,sat_knn)
 CLErr_knn <- mean(sat_knn_pred != sat_tst_df$C)
 ```
 
-### <font color=darkblue>Análisis Discriminante Lineal</font>
+### Análisis Discriminante Lineal
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_LDA_pred <- predict(train(sat_LDA$formula, data= sat_trn_df, method="lda", trControl = trainControl(method = "cv")),sat_tst_df)
@@ -562,7 +558,7 @@ utils.OVAROC(sat_tst_df,train(sat_LDA$formula, data= sat_trn_df, method="lda", t
 CLErr_LDA <- mean(sat_LDA_pred != sat_tst_df$C)
 ```
 
-### <font color=darkblue>Análisis Discriminante Cuadrático</font>
+### Análisis Discriminante Cuadrático
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_QDA_pred <- predict(train(sat_QDA$formula, data= sat_trn_df, method="qda", trControl = trainControl(method = "cv")),sat_tst_df)
@@ -571,7 +567,7 @@ utils.OVAROC(sat_tst_df,train(sat_QDA$formula, data= sat_trn_df, method="lda", t
 CLErr_QDA <- mean(sat_QDA_pred != sat_tst_df$C)
 ```
 
-### <font color=darkblue> Comparación del Error de Clasificación de los Modelos</font>
+### Comparación del Error de Clasificación de los Modelos
 
 En el gráfico abajo se puede ver la comparación de los errores de clasificación de todos los modelos. Los resultados fueron los esperados, manteniéndose las tendencias vistas en base a los errores estimados por validación cruzada, aunque ligeramente mayores.
 
@@ -593,7 +589,7 @@ CErr_plot
 
 ------------------------------------------------------------------------
 
-# <font color=darkblue> Análisis Para el Set de Datos Completo </font>
+# Análisis Para el Set de Datos Completo 
 
 ------------------------------------------------------------------------
 
@@ -611,7 +607,7 @@ sat_trn_full_df$C <- as.factor(sat_trn_full_df$C)
 sat_tst_full_df$C <- as.factor(sat_tst_full_df$C)
 ```
 
-### <font color=darkblue> Árbol de Decisión </font>
+### Árbol de Decisión 
 
 ```{r,warning=FALSE,message=FALSE}
 set.seed(20)
@@ -631,7 +627,7 @@ rpart.plot(poda_rpart, cex = 0.5, extra = 0)
 
 En el resultado final que se peude ver arriba, se puede ver que el arbol de decisión obtenido mediante poda incluye numerosas variables fuera del pixel central, aunque aquellas del pixel central (V17-V20) tienden a "abrir el árbol". Es decir, el modelo comienza la distinción con los datos del pixel central, y realiza las clasificaciones finales utilizando información "extra" de los píxeles contiguos.
 
-### <font color=darkblue> Random Forest </font>
+### Random Forest
 
 ```{r, echo=FALSE,warning=FALSE,message=FALSE}
 set.seed(20)
@@ -649,7 +645,7 @@ Viendo las gráficas se puede notar que, si bien el pixel central es determinant
 
 Más adelante veremos que esto llevó a una reducción considerable en el error de clasificación.
 
-### <font color=darkblue> Vecinos Más Cercanos </font>
+### Vecinos Más Cercanos 
 
 Siguiendo con KNN, en este caso se notó que el número de vecinos a incluir para maximizar la precisión se redujo considerablemente. Se puede ver un pico claro en 9 vecinos, mientras que antes se notaba una performance similar para un gran número de posibles valores de k.
 
@@ -682,7 +678,7 @@ best_k <- results$k[which.max(results$Accuracy)]
 CVErr_KNN <- 1-unname(sat_knn$results[best_k,"Accuracy"])
 ```
 
-### <font color=darkblue> Regresión Logística Multinomial </font>
+### Regresión Logística Multinomial 
 
 ```{r,results = FALSE,echo=FALSE,warning=FALSE,message=FALSE,fig.align='center'}
 sat_mlr <- train(C ~ ., 
@@ -697,7 +693,7 @@ predicted_mlr <- predict(sat_mlr, newdata = sat_trn_full_df)
 CVErr_mlr <- mean(predicted_mlr != sat_trn_full_df$C)
 ```
 
-### <font color=darkblue> Análisis Discriminante Lineal</font>
+### Análisis Discriminante Lineal
 
 Tanto para QDA como LDA, se repitió el análisis mediante Best Subset. Inicialmente se trabajo con un Forward Stepwise para acelerar el proceso, pero luego se vio que el costo de utilizar Best Subset no era imposible en términos de tiempo.
 
@@ -710,7 +706,7 @@ sat_LDA
 CVErr_LDA <- 1-unname(sat_LDA$result.pm["crossval.rate"])
 ```
 
-### <font color=darkblue> Análisis Discriminante Cuadrático</font>
+### Análisis Discriminante Cuadrático
 
 El proceso se repitió para QDA. Lo interesante aquí es que se obtuvo exactamente el mismo modelo de antes! Con V17, V18 y V20. Los resultados son consistentes con el ranking de importancia de Random Forest, así como con los análisis realizadas en la sección anterior.
 
@@ -721,7 +717,7 @@ sat_QDA
 CVErr_QDA <- 1-unname(sat_QDA$result.pm["crossval.rate"])
 ```
 
-### <font color=darkblue> Comparación del Error de 10-fold CV</font>
+### Comparación del Error de 10-fold CV
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 models <- c("AD", "RF", "KNN", "RLM","ADL","ADC")
@@ -744,7 +740,7 @@ Lo que sí es notable es la enorme mejora de los resultados obtenidos mediante V
 
 ------------------------------------------------------------------------
 
-## <font color=darkblue>Evaluación de los Modelos contra el Set de Testeo</font>
+## Evaluación de los Modelos contra el Set de Testeo
 
 ------------------------------------------------------------------------
 
@@ -752,8 +748,7 @@ Abajo se pueden ver las matrices de confusión para cada uno de los modelos. Si 
 
 Mientras tanto, el resto de los modelos mantuvo básicamente la misma performance en todas las clases, y no se vieron beneficiadas por la mayor información proporcionada por los píxeles contiguos.
 
-### <font color=darkblue>Árbol de Decisión</font>
-
+### Árbol de Decisión
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rpart_pred <- predict(sat_rpart,sat_tst_full_df,type="class")
 utils.conf_matrix(sat_tst_full_df,sat_rpart_pred)
@@ -761,7 +756,7 @@ utils.OVAROC(sat_tst_full_df,sat_rpart)
 CLErr_rpart <- mean(sat_rpart_pred != sat_tst_full_df$C)
 ```
 
-### <font color=darkblue>Random Forest</font>
+### Random Forest
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_rf_pred <- predict(sat_rf,sat_tst_full_df,type="class")
@@ -770,7 +765,7 @@ utils.OVAROC(sat_tst_full_df,sat_rf)
 CLErr_rf <- mean(sat_rf_pred != sat_tst_full_df$C)
 ```
 
-### <font color=darkblue>Regresión Logística Multinomial</font>
+### Regresión Logística Multinomial
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_mlr_pred <- predict(sat_mlr,sat_tst_full_df)
@@ -779,7 +774,7 @@ utils.OVAROC(sat_tst_full_df,sat_mlr)
 CLErr_mlr <- mean(sat_mlr_pred != sat_tst_full_df$C)
 ```
 
-### <font color=darkblue>Vecinos Más Cercanos</font>
+### Vecinos Más Cercanos
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_knn_pred <- predict(sat_knn,sat_tst_full_df)
@@ -788,7 +783,7 @@ utils.OVAROC(sat_tst_full_df,sat_knn)
 CLErr_knn <- mean(sat_knn_pred != sat_tst_full_df$C)
 ```
 
-### <font color=darkblue>Análisis Discriminante Lineal</font>
+### Análisis Discriminante Lineal
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_LDA_pred <- predict(train(sat_LDA$formula, data= sat_trn_full_df, method="lda", trControl = trainControl(method = "cv")),sat_tst_full_df)
@@ -797,7 +792,7 @@ utils.OVAROC(sat_tst_full_df,train(sat_LDA$formula, data= sat_trn_full_df, metho
 CLErr_LDA <- mean(sat_LDA_pred != sat_tst_full_df$C)
 ```
 
-### <font color=darkblue>Análisis Discriminante Cuadrático</font>
+### Análisis Discriminante Cuadrático
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 sat_QDA_pred <- predict(train(sat_QDA$formula, data= sat_trn_full_df, method="qda", trControl = trainControl(method = "cv")),sat_tst_full_df)
@@ -806,7 +801,7 @@ utils.OVAROC(sat_tst_full_df,train(sat_QDA$formula, data= sat_trn_full_df, metho
 CLErr_QDA <- mean(sat_QDA_pred != sat_tst_full_df$C)
 ```
 
-### <font color=darkblue> Comparación del Error de Clasificación de los Modelos</font>
+### Comparación del Error de Clasificación de los Modelos
 
 ```{r}
 models <- c("AD", "RF", "KNN", "RLM","ADL","ADC")
@@ -827,7 +822,7 @@ El mejor modelo resulto ser el de Random Forest.
 
 ------------------------------------------------------------------------
 
-# <font color=darkblue> Observaciones y Conclusiones Generales </font>
+# Observaciones y Conclusiones Generales
 
 ------------------------------------------------------------------------
 
